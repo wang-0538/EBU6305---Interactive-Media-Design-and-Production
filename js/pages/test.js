@@ -890,6 +890,26 @@
       }
       return;
     }
+    var quizWsDock = target.closest("[data-quiz-workspace-dock]");
+    var quizWsDockTab = target.closest("[data-quiz-workspace-dock-tab]");
+    if (quizWsDockTab && quizWsDock) {
+      event.preventDefault();
+      var qTab = quizWsDockTab.getAttribute("data-quiz-workspace-dock-tab");
+      var qCur = quizWsDock.getAttribute("data-active") || "";
+      if (quizWsDock.classList.contains("is-open") && qCur === qTab) {
+        syncQuizWorkspaceDock(quizWsDock, null);
+      } else {
+        syncQuizWorkspaceDock(quizWsDock, qTab);
+      }
+      return;
+    }
+    var openQuizWsDock = rootEl.querySelector("[data-quiz-workspace-dock].is-open");
+    if (openQuizWsDock) {
+      var qInWsDock = target.closest("[data-quiz-workspace-dock]");
+      if (!qInWsDock) {
+        syncQuizWorkspaceDock(openQuizWsDock, null);
+      }
+    }
     var mapDock = target.closest("[data-map-dock]");
     var mapDockTab = target.closest("[data-map-dock-tab]");
     var mapDockScrim = target.closest("[data-map-dock-scrim]");
@@ -1366,9 +1386,12 @@
 
     applyChapterTheme(session.chapterId);
 
+    var overviewPanelHtml = renderQuizOverviewPanel(session);
+    var analysisPanelHtml = renderQuizAnalysisPanel(session, accuracy);
+
     rootEl.innerHTML =
       '<div class="quiz-shell quiz-shell--workspace">' +
-        renderQuizWorkspaceTopbar(session, chapter, level) +
+        renderQuizWorkspaceTopbar(session, chapter, level, overviewPanelHtml, analysisPanelHtml) +
         '<div class="quiz-workspace">' +
           '<div class="quiz-workspace__main">' +
             '<section class="quiz-workspace-card">' +
@@ -1391,9 +1414,9 @@
             '</div>' +
           '</div>' +
           '<aside class="quiz-workspace__sidebar">' +
-            renderQuizOverviewPanel(session) +
-            renderQuizAnalysisPanel(session, accuracy) +
-          '</aside>' +
+            overviewPanelHtml +
+            analysisPanelHtml +
+          "</aside>" +
         "</div>" +
       "</div>" +
       renderQuizDialog();
@@ -1419,7 +1442,7 @@
       body =
         "If you reveal a hint, you will earn <strong>fewer points</strong> on this question when you answer correctly. Continue?";
       confirmLabel = "Show hint";
-      cancelLabel = "Hmm...I’ll figure it out myself!";
+      cancelLabel = "I’ll figure it out myself!";
       cancelClass = "quiz-dialog__btn quiz-dialog__btn--primary";
       confirmClass = "quiz-dialog__btn quiz-dialog__btn--ghost";
     } else {
@@ -1449,7 +1472,7 @@
     );
   }
 
-  function renderQuizWorkspaceTopbar(session, chapter, level) {
+  function renderQuizWorkspaceTopbar(session, chapter, level, overviewPanelHtml, analysisPanelHtml) {
     var unitIndex = Math.max(0, (Number(session.unitId.split("-")[1]) || 1) - 1);
     var levelName = level && level.name ? level.name : "Level";
     var chapterName = chapter && chapter.name ? chapter.name : "Chapter";
@@ -1468,12 +1491,80 @@
       : '<button type="button" class="quiz-workspace-topbar__close" data-quiz-exit data-quiz-exit-href="' + escapeAttr(closeHref) + '" aria-label="' + escapeAttr(backLabel) + '">' +
           '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>' +
         "</button>";
-    return '<section class="quiz-workspace-topbar">' +
+    var dockHtml =
+      overviewPanelHtml && analysisPanelHtml
+        ? '<div class="quiz-workspace-topbar__dock" data-quiz-workspace-dock>' +
+          '<div class="quiz-workspace-topbar__dock-icons">' +
+            '<div class="quiz-workspace-dock-slot quiz-workspace-dock-slot--overview">' +
+              '<button type="button" class="quiz-workspace-dock__tab" data-quiz-workspace-dock-tab="overview" aria-expanded="false" aria-controls="quiz-dock-panel-overview">' +
+              '<span class="quiz-workspace-dock__tab-ic" aria-hidden="true">' +
+              IC.overview +
+              "</span>" +
+              '<span class="visually-hidden">Question Overview</span>' +
+              "</button>" +
+              '<div id="quiz-dock-panel-overview" class="quiz-workspace-dock__sheet" data-quiz-workspace-dock-sheet="overview">' +
+              overviewPanelHtml +
+              "</div>" +
+            "</div>" +
+            '<div class="quiz-workspace-dock-slot quiz-workspace-dock-slot--analysis">' +
+              '<button type="button" class="quiz-workspace-dock__tab" data-quiz-workspace-dock-tab="analysis" aria-expanded="false" aria-controls="quiz-dock-panel-analysis">' +
+              '<span class="quiz-workspace-dock__tab-ic" aria-hidden="true">' +
+              IC.analysis +
+              "</span>" +
+              '<span class="visually-hidden">Live Analysis</span>' +
+              "</button>" +
+              '<div id="quiz-dock-panel-analysis" class="quiz-workspace-dock__sheet" data-quiz-workspace-dock-sheet="analysis">' +
+              analysisPanelHtml +
+              "</div>" +
+            "</div>" +
+          "</div>" +
+          "</div>"
+        : "";
+    return (
+      '<section class="quiz-workspace-topbar">' +
       '<div class="quiz-workspace-topbar__backblock">' +
-        closeControl +
-        '<div class="quiz-workspace-topbar__heading"><strong>' + title + '</strong><span>' + chapterName + '</span></div>' +
-      '</div>' +
-    '</section>';
+      closeControl +
+      '<div class="quiz-workspace-topbar__heading"><strong>' +
+      title +
+      "</strong><span>" +
+      chapterName +
+      "</span></div>" +
+      "</div>" +
+      dockHtml +
+      "</section>"
+    );
+  }
+
+  function syncQuizWorkspaceDock(dockRoot, panelId) {
+    if (!dockRoot) return;
+    var tabs = dockRoot.querySelectorAll("[data-quiz-workspace-dock-tab]");
+    var sheets = dockRoot.querySelectorAll("[data-quiz-workspace-dock-sheet]");
+    var i;
+    var tid;
+    var sid;
+    if (!panelId) {
+      dockRoot.classList.remove("is-open");
+      dockRoot.removeAttribute("data-active");
+      for (i = 0; i < tabs.length; i++) {
+        tabs[i].classList.remove("is-active");
+        tabs[i].setAttribute("aria-expanded", "false");
+      }
+      for (i = 0; i < sheets.length; i++) {
+        sheets[i].classList.remove("is-dock-active");
+      }
+      return;
+    }
+    dockRoot.classList.add("is-open");
+    dockRoot.setAttribute("data-active", panelId);
+    for (i = 0; i < tabs.length; i++) {
+      tid = tabs[i].getAttribute("data-quiz-workspace-dock-tab");
+      tabs[i].classList.toggle("is-active", tid === panelId);
+      tabs[i].setAttribute("aria-expanded", tid === panelId ? "true" : "false");
+    }
+    for (i = 0; i < sheets.length; i++) {
+      sid = sheets[i].getAttribute("data-quiz-workspace-dock-sheet");
+      sheets[i].classList.toggle("is-dock-active", sid === panelId);
+    }
   }
 
   function renderQuizOverviewPanel(session) {
