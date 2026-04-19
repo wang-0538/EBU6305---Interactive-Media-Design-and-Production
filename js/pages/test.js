@@ -1767,7 +1767,7 @@
         '</div>' +
         '<div class="results-actions-bar">' +
           renderLinkButton("Retry This Quiz", buildUrl("test-quiz.html", { chapter: result.chapter, level: result.level, unit: result.unit, fresh: "1" }), "test-link-btn--primary") +
-          '<button type="button" class="test-link-btn test-link-btn--soft" data-share-community="' + result.id + '">Share Reflection to Community</button>' +
+          '<button type="button" class="test-link-btn test-link-btn--soft" data-share-community="' + result.id + '">Share to Community</button>' +
         '</div>' +
       '</div>';
 

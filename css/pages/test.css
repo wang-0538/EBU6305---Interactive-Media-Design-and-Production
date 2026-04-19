@@ -2924,6 +2924,9 @@ a.results-mini-ov__block:focus-visible {
   .quiz-workspace-dock-slot--overview .quiz-workspace-dock__sheet {
     left: auto;
     right: 0;
+    width: fit-content;
+    max-width: min(22rem, calc(100dvw - 1.25rem));
+    min-width: 0;
   }
 
   .quiz-workspace-dock-slot--analysis .quiz-workspace-dock__sheet {
@@ -2937,6 +2940,36 @@ a.results-mini-ov__block:focus-visible {
 
   .quiz-workspace-dock__sheet .quiz-sidecard {
     margin: 0;
+  }
+
+  /* Dock Question Overview: compact square index + tighter white card (sidebar / wide unchanged). */
+  .quiz-workspace-dock__sheet .quiz-sidecard--overview {
+    width: fit-content;
+    max-width: min(22rem, calc(100dvw - 1.25rem));
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 0.85rem 0.9rem;
+  }
+
+  .quiz-workspace-dock__sheet .quiz-sidecard--overview .quiz-index-grid {
+    grid-template-columns: repeat(4, minmax(0, 3.6rem));
+    width: max-content;
+    max-width: 100%;
+    column-gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .quiz-workspace-dock__sheet .quiz-sidecard--overview .quiz-index-btn {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.6rem;
+    height: 2.5rem;
+    min-width: 3.6rem;
+    min-height: 2.5rem;
+    padding: 0;
+    justify-self: center;
   }
 
   .test-map-layout {
@@ -2954,10 +2987,24 @@ a.results-mini-ov__block:focus-visible {
   .quiz-mini-grid,
   .mistakes-overview,
   .mistakes-filter-card .mistakes-filters,
-  .test-stat-grid,
-  .result-stats-grid,
-  .results-split {
+  .test-stat-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .result-stats-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .results-split {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .results-split .results-card:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+
+  .results-mini-ov__hint {
+    display: none;
   }
 
   .test-map-shell {
