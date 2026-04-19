@@ -2987,10 +2987,24 @@ a.results-mini-ov__block:focus-visible {
   .quiz-mini-grid,
   .mistakes-overview,
   .mistakes-filter-card .mistakes-filters,
-  .test-stat-grid,
-  .result-stats-grid,
-  .results-split {
+  .test-stat-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .result-stats-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .results-split {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .results-split .results-card:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+
+  .results-mini-ov__hint {
+    display: none;
   }
 
   .test-map-shell {
