@@ -343,6 +343,15 @@ main.page-test.page-test-results {
   align-self: start;
 }
 
+.test-map-page {
+  min-width: 0;
+}
+
+/* Map dock: sibling below .test-map-layout; hidden on wide (sidebar shows cards) */
+.test-map-page > .test-map-dock {
+  display: none;
+}
+
 .test-sidebar-card,
 .results-card,
 .mistake-card {
@@ -2820,6 +2829,164 @@ a.results-mini-ov__block:focus-visible {
 
   .test-sidebar--map {
     position: static;
+    display: none;
+  }
+
+  /* Fill map page height so the dock sits on the big container bottom, below the map block */
+  .test-map-page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+    min-height: calc(100dvh - var(--header-height) - var(--main-footer-reserve) - 2.25rem);
+    overflow: visible;
+  }
+
+  .test-map-layout {
+    flex: 0 0 auto;
+  }
+
+  .test-map-page > .test-map-dock {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 20;
+    margin-top: auto;
+    overflow: visible;
+    pointer-events: none;
+  }
+
+  /* Sheet: bottom edge = bar top; expands upward only (hinged on the bar) */
+  .test-map-dock__sheet-wrap {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    z-index: 110;
+    width: auto;
+    max-height: 0;
+    margin: 0 0 0.35rem;
+    padding: 0;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    transition:
+      max-height 0.32s ease,
+      opacity 0.2s ease;
+  }
+
+  .test-map-dock.is-open .test-map-dock__sheet-wrap {
+    max-height: min(70vh, 30rem);
+    opacity: 1;
+    pointer-events: auto;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .test-map-dock__sheet-wrap .test-sidebar-card {
+    display: none;
+    margin: 0;
+    border-radius: 1.15rem;
+    box-shadow: var(--test-shadow);
+  }
+
+  .test-map-dock.is-open .test-map-dock__sheet-wrap .test-sidebar-card.is-dock-active {
+    display: block;
+  }
+
+  .test-map-dock__scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    background: rgba(15, 23, 42, 0.42);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.22s ease;
+    z-index: 100;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    font: inherit;
+    color: inherit;
+  }
+
+  .test-map-dock.is-open .test-map-dock__scrim {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .test-map-dock__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    gap: 0.2rem;
+    min-height: 3.25rem;
+    padding: 0.4rem 0.35rem calc(0.45rem + env(safe-area-inset-bottom, 0px)) 0.35rem;
+    border: 1.5px solid var(--test-border);
+    border-radius: 1.15rem;
+    background: var(--test-surface);
+    box-shadow: var(--test-shadow-sm);
+    pointer-events: auto;
+    position: relative;
+    z-index: 120;
+  }
+
+  .test-map-dock__tab {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    max-width: 5.5rem;
+    margin: 0 auto;
+    padding: 0.35rem 0.25rem;
+    border: none;
+    border-radius: 0.85rem;
+    background: transparent;
+    color: var(--test-ink);
+    cursor: pointer;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease,
+      transform 0.12s ease;
+    font: inherit;
+  }
+
+  .test-map-dock__tab:hover {
+    background: rgba(16, 35, 60, 0.06);
+  }
+
+  .test-map-dock__tab.is-active {
+    background: color-mix(in srgb, var(--color-primary) 12%, white);
+    color: var(--color-primary);
+  }
+
+  .test-map-dock__tab-ic {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 0;
+    transform: scale(1.36);
+  }
+
+  .test-map-dock__tab-ic svg {
+    display: block;
+  }
+  body.test-module.test-map-dock-open .site-header {
+    z-index: 40;
+  }
+
+  body.test-module.test-map-dock-open main.page-test {
+    position: relative;
+    z-index: 50;
   }
 
   .quiz-workspace-topbar {
@@ -2956,8 +3123,6 @@ a.results-mini-ov__block:focus-visible {
 /* ═══════════════════════════════════════
    Question Folder (Mistakes / Saved) Page
 ═══════════════════════════════════════ */
-
-/* Override old shell gap */
 .mistakes-shell {
   display: grid;
   gap: 0;
