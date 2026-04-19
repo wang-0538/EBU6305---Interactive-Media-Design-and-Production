@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Paint Game — Color Learning</title>
+    <link rel="stylesheet" href="css/variables.css" />
+    <link rel="stylesheet" href="css/main.css" />
+    <link rel="stylesheet" href="css/layout.css" />
+    <link rel="stylesheet" href="css/pages/game.css" />
+  </head>
+  <body>
+    <header class="site-header" role="banner">
+      <div id="site-navbar" aria-live="polite"></div>
+    </header>
+
+    <main id="main-content" class="page-game">
+      <section class="game-intro">
+        <h1 class="page-title">Painting Game</h1>
+        <p class="lead">Pick a black-line drawing, choose a color model (RGB / HSV / CMYK), and click a closed region to fill it like a paint bucket.</p>
+        <label class="mode-picker" for="game-mode">
+          <span>Mode</span>
+          <select id="game-mode">
+            <option value="standard" selected>Standard mode</option>
+            <option value="challenge">Challenge mode</option>
+          </select>
+        </label>
+      </section>
+
+      <section id="gallery-view" class="gallery-view" aria-label="Drawing selection area">
+        <div class="drawing-grid">
+          <article class="drawing-card">
+            <h2 class="drawing-card__title">House</h2>
+            <canvas id="preview-0" width="280" height="200" aria-label="House line-art preview"></canvas>
+            <button type="button" class="enter-btn" data-open-drawing="0">Open this <span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4z"/></svg></span></button>
+          </article>
+
+          <article class="drawing-card">
+            <h2 class="drawing-card__title">Fish</h2>
+            <canvas id="preview-1" width="280" height="200" aria-label="Fish line-art preview"></canvas>
+            <button type="button" class="enter-btn" data-open-drawing="1">Open this <span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4z"/></svg></span></button>
+          </article>
+
+          <article class="drawing-card">
+            <h2 class="drawing-card__title">Flower</h2>
+            <canvas id="preview-2" width="280" height="200" aria-label="Flower line-art preview"></canvas>
+            <button type="button" class="enter-btn" data-open-drawing="2">Open this <span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4z"/></svg></span></button>
+          </article>
+
+          <article class="drawing-card">
+            <h2 class="drawing-card__title">Car</h2>
+            <canvas id="preview-3" width="280" height="200" aria-label="Car line-art preview"></canvas>
+            <button type="button" class="enter-btn" data-open-drawing="3">Open this <span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4z"/></svg></span></button>
+          </article>
+
+          <article class="drawing-card">
+            <h2 class="drawing-card__title">Tree</h2>
+            <canvas id="preview-4" width="280" height="200" aria-label="Tree line-art preview"></canvas>
+            <button type="button" class="enter-btn" data-open-drawing="4">Open this <span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4z"/></svg></span></button>
+          </article>
+
+          <article class="drawing-card">
+            <h2 class="drawing-card__title">Cat</h2>
+            <canvas id="preview-5" width="280" height="200" aria-label="Cat line-art preview"></canvas>
+            <button type="button" class="enter-btn" data-open-drawing="5">Open this <span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4z"/></svg></span></button>
+          </article>
+
+          <article class="drawing-card">
+            <h2 class="drawing-card__title">Sailboat</h2>
+            <canvas id="preview-6" width="280" height="200" aria-label="Sailboat line-art preview"></canvas>
+            <button type="button" class="enter-btn" data-open-drawing="6">Open this <span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4z"/></svg></span></button>
+          </article>
+
+          <article class="drawing-card">
+            <h2 class="drawing-card__title">Mushroom</h2>
+            <canvas id="preview-7" width="280" height="200" aria-label="Mushroom line-art preview"></canvas>
+            <button type="button" class="enter-btn" data-open-drawing="7">Open this <span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4z"/></svg></span></button>
+          </article>
+        </div>
+      </section>
+
+      <section id="editor-view" class="editor-view" aria-label="Painting workspace" hidden>
+        <div class="editor-topbar">
+          <h2 id="editor-title">Painting Workspace</h2>
+          <button type="button" id="back-to-gallery" class="back-btn btn-with-icon"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg></span><span>Back to gallery</span></button>
+        </div>
+
+        <div class="editor-layout">
+          <div class="canvas-pane">
+            <p class="hint">How to use: choose a color model, then use slider or number input, choose a tool, and click a closed region.</p>
+
+            <div class="editor-stats" aria-live="polite">
+              <div class="fill-progress-block">
+                <div class="fill-progress-header">
+                  <span class="fill-progress-title">Fill progress</span>
+                  <span class="fill-progress-numbers" id="fill-progress-label">0% · 0 / 0 px</span>
+                </div>
+                <div class="fill-progress-track" id="fill-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Painting fill progress">
+                  <div class="fill-progress-fill" id="fill-progress-fill"></div>
+                </div>
+              </div>
+              <div class="session-stats">
+                <span id="session-time">Session time: 0:00</span>
+                <span id="completion-time" class="completion-time" hidden>Completed in: —</span>
+                <span id="color-adjust-count">Color adjustments: 0</span>
+              </div>
+            </div>
+            <canvas id="editor-canvas" width="900" height="620" aria-label="Painting canvas"></canvas>
+          </div>
+
+          <aside class="right-pane" aria-label="Color and painting controls">
+            <div class="controls">
+              <label class="model-picker" for="color-model">
+                <span>Color Model</span>
+                <select id="color-model">
+                  <option value="rgb" selected>RGB</option>
+                  <option value="hsv">HSV</option>
+                  <option value="cmyk">CMYK</option>
+                </select>
+              </label>
+
+              <div id="controls-rgb" class="model-group" data-model-group="rgb">
+                <label class="value-control">
+                  <span>R (0-255)</span>
+                  <div class="value-row">
+                    <input id="rgb-r" type="range" min="0" max="255" value="255" />
+                    <input id="rgb-r-number" type="number" min="0" max="255" value="255" />
+                  </div>
+                </label>
+                <label class="value-control">
+                  <span>G (0-255)</span>
+                  <div class="value-row">
+                    <input id="rgb-g" type="range" min="0" max="255" value="80" />
+                    <input id="rgb-g-number" type="number" min="0" max="255" value="80" />
+                  </div>
+                </label>
+                <label class="value-control">
+                  <span>B (0-255)</span>
+                  <div class="value-row">
+                    <input id="rgb-b" type="range" min="0" max="255" value="80" />
+                    <input id="rgb-b-number" type="number" min="0" max="255" value="80" />
+                  </div>
+                </label>
+              </div>
+
+              <div id="controls-hsv" class="model-group" data-model-group="hsv" hidden>
+                <label class="value-control">
+                  <span>H (0-360)</span>
+                  <div class="value-row">
+                    <input id="hsv-h" type="range" min="0" max="360" value="0" />
+                    <input id="hsv-h-number" type="number" min="0" max="360" value="0" />
+                  </div>
+                </label>
+                <label class="value-control">
+                  <span>S (0-100)</span>
+                  <div class="value-row">
+                    <input id="hsv-s" type="range" min="0" max="100" value="69" />
+                    <input id="hsv-s-number" type="number" min="0" max="100" value="69" />
+                  </div>
+                </label>
+                <label class="value-control">
+                  <span>V (0-100)</span>
+                  <div class="value-row">
+                    <input id="hsv-v" type="range" min="0" max="100" value="100" />
+                    <input id="hsv-v-number" type="number" min="0" max="100" value="100" />
+                  </div>
+                </label>
+              </div>
+
+              <div id="controls-cmyk" class="model-group" data-model-group="cmyk" hidden>
+                <label class="value-control">
+                  <span>C (0-100)</span>
+                  <div class="value-row">
+                    <input id="cmyk-c" type="range" min="0" max="100" value="0" />
+                    <input id="cmyk-c-number" type="number" min="0" max="100" value="0" />
+                  </div>
+                </label>
+                <label class="value-control">
+                  <span>M (0-100)</span>
+                  <div class="value-row">
+                    <input id="cmyk-m" type="range" min="0" max="100" value="69" />
+                    <input id="cmyk-m-number" type="number" min="0" max="100" value="69" />
+                  </div>
+                </label>
+                <label class="value-control">
+                  <span>Y (0-100)</span>
+                  <div class="value-row">
+                    <input id="cmyk-y" type="range" min="0" max="100" value="69" />
+                    <input id="cmyk-y-number" type="number" min="0" max="100" value="69" />
+                  </div>
+                </label>
+                <label class="value-control">
+                  <span>K (0-100)</span>
+                  <div class="value-row">
+                    <input id="cmyk-k" type="range" min="0" max="100" value="0" />
+                    <input id="cmyk-k-number" type="number" min="0" max="100" value="0" />
+                  </div>
+                </label>
+              </div>
+
+              <div class="color-panel">
+                <div class="current-color-block">
+                  <span>Current color</span>
+                  <div id="color-preview" class="color-preview-circle" aria-label="Current color preview"></div>
+                </div>
+                <div class="palette-block">
+                  <span>Recent colors</span>
+                  <div id="recent-palette" class="recent-palette" aria-label="Recent 5 colors"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="tool-row" aria-label="Tool actions">
+              <button type="button" id="tool-fill" class="tool-btn btn-with-icon is-active"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 11.5L12.5 5 5 12.5c-1.66 1.66-1.66 4.34 0 6s4.34 1.66 6 0l7.5-7.5c1.66-1.66 1.66-4.34 0-6zM7.5 16.5a2.5 2.5 0 010-3.54l4.65-4.65 3.54 3.54L11 16.5a2.5 2.5 0 01-3.5 0z"/></svg></span><span>Paint Bucket</span></button>
+              <button type="button" id="tool-eraser" class="tool-btn btn-with-icon"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M16.24 3.56a2 2 0 00-2.83 0L3.56 13.41a2 2 0 000 2.83L7.34 20H20a1 1 0 100-2h-4.93l4.17-4.17a2 2 0 000-2.83l-3-3zM8.76 18l-3.79-3.79 9.85-9.85L18.61 8.15 8.76 18z"/></svg></span><span>Region Eraser</span></button>
+              <button type="button" id="reset-drawing" class="tool-btn btn-with-icon tool-btn--warn"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6a6 6 0 01-10.24 4.24l-1.42 1.42A8 8 0 1012 5z"/></svg></span><span>Reset Drawing</span></button>
+              <button type="button" id="save-image" class="tool-btn btn-with-icon tool-btn--success"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M17 3H5a2 2 0 00-2 2v14h18V7l-4-4zM7 5h8v4H7V5zm5 12a3 3 0 110-6 3 3 0 010 6z"/></svg></span><span>Save as Image</span></button>
+            </div>
+
+            <div id="challenge-panel" class="challenge-panel" hidden>
+              <h3>Challenge sample</h3>
+              <p>Try to match the sample colors. Submit when you finish.</p>
+              <canvas id="challenge-sample-canvas" width="300" height="206" aria-label="Challenge sample preview"></canvas>
+              <button type="button" id="submit-challenge" class="tool-btn btn-with-icon"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></span><span>Submit challenge</span></button>
+              <p id="challenge-score" class="challenge-score" aria-live="polite">Score: —</p>
+            </div>
+
+            <div class="editor-stats" aria-live="polite">
+              <div class="fill-progress-block">
+                <div class="fill-progress-header">
+                  <span class="fill-progress-title">Fill progress</span>
+                  <span class="fill-progress-numbers" id="fill-progress-label">0% · 0 / 0 px</span>
+                </div>
+                <div class="fill-progress-track" id="fill-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Painting fill progress">
+                  <div class="fill-progress-fill" id="fill-progress-fill"></div>
+                </div>
+              </div>
+              <div class="session-stats">
+                <span id="session-time">Session time: 0:00</span>
+                <span id="completion-time" class="completion-time" hidden>Completed in: —</span>
+                <span id="color-adjust-count">Color adjustments: 0</span>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer" role="contentinfo">
+      <div id="site-footer"></div>
+    </footer>
+
+    <script src="js/theme.js" defer></script>
+    <script src="js/main.js" defer></script>
+    <script src="js/navbar.js" defer></script>
+    <script src="js/auth.js" defer></script>
+    <script src="js/pages/game.js" defer></script>
+  </body>
+</html>

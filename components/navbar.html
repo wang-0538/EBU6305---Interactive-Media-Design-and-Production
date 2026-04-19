@@ -1,0 +1,32 @@
+<div class="site-header__inner">
+  <div class="site-header__end">
+    <button type="button" class="site-nav__toggle" data-nav-toggle aria-expanded="false" aria-controls="primary-nav">
+      Menu
+    </button>
+    <nav class="site-nav" id="primary-nav" aria-label="Primary">
+      <ul class="site-nav__list">
+        <li><a class="site-nav__link" href="index.html" data-nav="index.html">Home</a></li>
+        <li><a class="site-nav__link" href="learning.html" data-nav="learning.html">Learn</a></li>
+        <li><a class="site-nav__link" href="game.html" data-nav="game.html">Game</a></li>
+        <li><a class="site-nav__link" href="test.html" data-nav="test.html">Test</a></li>
+        <li><a class="site-nav__link" href="community.html" data-nav="community.html">Community</a></li>
+      </ul>
+    </nav>
+    <div class="user-menu" data-user-menu>
+      <button
+        type="button"
+        class="user-menu-trigger"
+        aria-label="Account"
+        title="Log in"
+        data-auth-trigger
+        aria-haspopup="true"
+        aria-expanded="false"
+      >
+        <span class="user-avatar user-avatar--placeholder" data-user-avatar aria-hidden="true"></span>
+      </button>
+      <div class="user-menu__dropdown" data-user-dropdown hidden>
+        <button type="button" class="user-menu__logout" data-auth-logout>Log out</button>
+      </div>
+    </div>
+  </div>
+</div>

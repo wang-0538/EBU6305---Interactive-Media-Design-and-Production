@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Learn — Color Learning</title>
+    <link rel="stylesheet" href="css/variables.css" />
+    <link rel="stylesheet" href="css/main.css" />
+    <link rel="stylesheet" href="css/layout.css" />
+    <link rel="stylesheet" href="css/pages/learning.css" />
+  </head>
+  <body>
+    <header class="site-header" role="banner">
+      <div id="site-navbar" aria-live="polite"></div>
+    </header>
+
+    <main id="main-content" class="page-learning">
+      <div class="learning-layout">
+        <aside class="learning-sidebar" id="learning-sidebar" aria-label="Learning navigation">
+          <button class="learning-sidebar__toggle" id="sidebar-toggle" aria-expanded="false" aria-controls="sidebar-menu" aria-label="Toggle navigation menu">
+            <span class="learning-sidebar__toggle-icon"></span>
+          </button>
+          <nav class="learning-sidebar__nav" id="sidebar-menu">
+            <ul class="learning-menu">
+              <li class="learning-menu__item">
+                <a href="#overview" class="learning-menu__link" data-section="overview">Overview</a>
+              </li>
+              <li class="learning-menu__item learning-menu__item--has-children">
+                <button class="learning-menu__toggle" aria-expanded="false" data-parent="learning-module">
+                  <span>Learning Module</span>
+                  <span class="learning-menu__arrow" aria-hidden="true">▾</span>
+                </button>
+                <ul class="learning-menu__sub" id="submenu-learning-module">
+                  <li class="learning-menu__item learning-menu__item--has-children">
+                    <button class="learning-menu__toggle" aria-expanded="false" data-parent="basic">
+                      <span>Basic</span>
+                      <span class="learning-menu__arrow" aria-hidden="true">▾</span>
+                    </button>
+                    <ul class="learning-menu__sub" id="submenu-basic">
+                      <li class="learning-menu__item">
+                        <a href="#basic-color-models" class="learning-menu__link" data-section="basic-color-models">Color Models</a>
+                      </li>
+                      <li class="learning-menu__item">
+                        <a href="#basic-color-spaces" class="learning-menu__link" data-section="basic-color-spaces">Color Spaces</a>
+                      </li>
+                      <li class="learning-menu__item">
+                        <a href="#basic-color-attributes" class="learning-menu__link" data-section="basic-color-attributes">Color Attributes & Perception</a>
+                      </li>
+                    </ul>
+                  </li>
+                  <li class="learning-menu__item learning-menu__item--has-children">
+                    <button class="learning-menu__toggle" aria-expanded="false" data-parent="encoding-concepts">
+                      <span>Encoding Concepts</span>
+                      <span class="learning-menu__arrow" aria-hidden="true">▾</span>
+                    </button>
+                    <ul class="learning-menu__sub" id="submenu-encoding-concepts">
+                      <li class="learning-menu__item">
+                        <a href="#encoding-bit-depth" class="learning-menu__link" data-section="encoding-bit-depth">Bit Depth</a>
+                      </li>
+                      <li class="learning-menu__item">
+                        <a href="#encoding-color-profiles" class="learning-menu__link" data-section="encoding-color-profiles">Color Profiles</a>
+                      </li>
+                      <li class="learning-menu__item">
+                        <a href="#encoding-gamma-correction" class="learning-menu__link" data-section="encoding-gamma-correction">Gamma Correction</a>
+                      </li>
+                    </ul>
+                  </li>
+                  <li class="learning-menu__item learning-menu__item--has-children">
+                    <button class="learning-menu__toggle" aria-expanded="false" data-parent="advance-topics">
+                      <span>Advance Topics</span>
+                      <span class="learning-menu__arrow" aria-hidden="true">▾</span>
+                    </button>
+                    <ul class="learning-menu__sub" id="submenu-advance-topics">
+                      <li class="learning-menu__item">
+                        <a href="#advance-hdr-color" class="learning-menu__link" data-section="advance-hdr-color">HDR Color</a>
+                      </li>
+                      <li class="learning-menu__item">
+                        <a href="#advance-wide-gamut" class="learning-menu__link" data-section="advance-wide-gamut">Wide Color Gamut</a>
+                      </li>
+                      <li class="learning-menu__item">
+                        <a href="#advance-color-management" class="learning-menu__link" data-section="advance-color-management">Color Management</a>
+                      </li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+              <li class="learning-menu__item learning-menu__item--has-children">
+                <button class="learning-menu__toggle" aria-expanded="false" data-parent="interaction">
+                  <span>Interaction</span>
+                  <span class="learning-menu__arrow" aria-hidden="true">▾</span>
+                </button>
+                <ul class="learning-menu__sub" id="submenu-interaction">
+                  <li class="learning-menu__item">
+                    <a href="#interaction-color-picker" class="learning-menu__link" data-section="interaction-color-picker">Color Picker</a>
+                  </li>
+                  <li class="learning-menu__item">
+                    <a href="#interaction-visual-example" class="learning-menu__link" data-section="interaction-visual-example">Visual Example</a>
+                  </li>
+                  <li class="learning-menu__item">
+                    <a href="#interaction-interactive-tools" class="learning-menu__link" data-section="interaction-interactive-tools">Interactive Tools</a>
+                  </li>
+                </ul>
+              </li>
+              <li class="learning-menu__item">
+                <a href="#relative-information" class="learning-menu__link" data-section="relative-information">Relative Information</a>
+              </li>
+            </ul>
+          </nav>
+        </aside>
+
+        <section class="learning-content" id="learning-content" aria-label="Learning content">
+          <div class="learning-content__inner">
+            <h1 class="learning-content__title" id="content-title">Welcome to Color Learning</h1>
+            <p class="learning-content__description" id="content-description">Select a topic from the sidebar to begin your journey into the fascinating world of colors.</p>
+            <section class="learning-share-card" aria-label="Share a learning note">
+              <h2 class="learning-share-card__title">Send Note to Community</h2>
+              <p class="learning-share-card__desc">Write one takeaway from this section and continue the discussion in Community.</p>
+              <label class="sr-only" for="learning-community-note">Learning note</label>
+              <textarea id="learning-community-note" class="learning-share-card__textarea" data-learning-note placeholder="Example: In this section I learned that ..."></textarea>
+              <div class="learning-share-card__actions">
+                <button type="button" class="learning-share-card__btn" data-learning-share>Send to Community Draft</button>
+                <p class="learning-share-card__status" role="status" aria-live="polite" data-learning-share-status></p>
+              </div>
+            </section>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <footer class="site-footer" role="contentinfo">
+      <div id="site-footer"></div>
+    </footer>
+
+    <script src="js/theme.js" defer></script>
+    <script src="js/main.js" defer></script>
+    <script src="js/navbar.js" defer></script>
+    <script src="js/auth.js" defer></script>
+    <script src="js/pages/learning.js" type="module" defer></script>
+  </body>
+</html>

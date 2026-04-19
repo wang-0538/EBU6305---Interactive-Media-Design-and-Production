@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Home — Color Learning</title>
+    <link rel="stylesheet" href="css/variables.css" />
+    <link rel="stylesheet" href="css/main.css" />
+    <link rel="stylesheet" href="css/layout.css" />
+    <link rel="stylesheet" href="css/pages/homepage.css" />
+  </head>
+  <body>
+    <header class="site-header" role="banner">
+      <div id="site-navbar" aria-live="polite"></div>
+    </header>
+
+    <main id="main-content" class="page-home">
+      <section class="home-hero" aria-label="Intro banner">
+        <p class="home-hero__tagline">Explore the world of colors!</p>
+      </section>
+
+      <section class="home-row home-row--2" aria-label="Learn and test">
+        <a class="home-card home-card--learn-spotlight" href="learning.html" data-home-learn-link aria-label="Explore learn module">
+          <p class="home-card__text home-card__text--learn" data-home-learn-title>Learn Colors the Smart Way</p>
+          <p class="home-learn__topic" data-home-learn-topic>Loading a random topic...</p>
+          <p class="home-learn__snippet" data-home-learn-snippet>Loading knowledge preview...</p>
+          <p class="home-learn__meta" data-home-learn-meta>Preparing section route...</p>
+        </a>
+        <a class="home-card home-card--test-spotlight" href="test.html" data-home-test-link aria-label="Open random test question">
+          <div class="home-test__head">
+            <p class="home-card__text home-card__text--test">Try Today’s Challenge!</p>
+          </div>
+          <p class="home-test__prompt" data-home-test-prompt>Loading a random question...</p>
+          <div class="home-test__options" data-home-test-options aria-label="Question options"></div>
+          <p class="home-test__meta" data-home-test-meta>Preparing quiz route</p>
+        </a>
+      </section>
+
+      <section class="home-row home-row--3" aria-label="Game and community">
+        <a class="home-card home-card--game-spotlight" href="game.html" data-home-game-link aria-label="Start your color challenge in Game">
+          <p class="home-card__text home-card__text--game">Start your color challenge!</p>
+          <canvas
+            class="home-game-preview"
+            data-home-game-preview
+            width="280"
+            height="200"
+            aria-label="Random game drawing preview"
+          ></canvas>
+        </a>
+        <section class="home-card home-card--community-spotlight" aria-label="Community preview card">
+          <p class="home-card__text home-card__text--community" data-home-community-title>👥 Join the Color Community</p>
+          <a class="home-community__notice" href="community.html" data-home-community-notice-link aria-label="Open community page">New community post +1</a>
+          <a class="home-community__post-link" href="community-posts.html" data-home-community-post-link aria-label="Open community post detail list">
+            <article class="home-community__bubble" aria-label="Community post preview">
+              <header class="home-community__head">
+                <span class="home-community__avatar" data-home-community-avatar aria-hidden="true">U</span>
+                <span class="home-community__author" data-home-community-author>@user</span>
+              </header>
+              <p class="home-community__tag" data-home-community-tag>#Community</p>
+              <p class="home-community__post" data-home-community-post>Loading a community post...</p>
+            </article>
+          </a>
+        </section>
+      </section>
+    </main>
+
+    <footer class="site-footer" role="contentinfo">
+      <div id="site-footer"></div>
+    </footer>
+
+    <script src="js/theme.js" defer></script>
+    <script src="js/main.js" defer></script>
+    <script src="js/navbar.js" defer></script>
+    <script src="js/auth.js" defer></script>
+    <script src="js/pages/homepage.js" defer></script>
+  </body>
+</html>

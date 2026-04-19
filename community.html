@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Community — Color Learning</title>
+    <link rel="stylesheet" href="css/variables.css" />
+    <link rel="stylesheet" href="css/main.css" />
+    <link rel="stylesheet" href="css/layout.css" />
+    <link rel="stylesheet" href="css/pages/community.css" />
+  </head>
+  <body data-community-view="preview">
+    <header class="site-header" role="banner">
+      <div id="site-navbar" aria-live="polite"></div>
+    </header>
+
+    <main id="main-content" class="community-page">
+      <section class="community-hero" aria-labelledby="community-title">
+        <h1 class="page-title community-hero__title" id="community-title">Color Learning Community</h1>
+        <p class="lead community-hero__lead">Share your color palettes and learning notes with peers.</p>
+        <div class="community-hero__actions">
+          <button type="button" class="community-hero__cta" data-scroll-composer>+ Create New Post</button>
+          <button type="button" class="community-hero__cta community-hero__cta--ghost" data-open-guidelines>Community Guidelines</button>
+        </div>
+      </section>
+
+      <div class="community-layout">
+        <section class="community-feed" aria-label="Community feed">
+          <article class="composer-card" id="composer" aria-labelledby="composer-title">
+            <h2 class="sr-only" id="composer-title">Create a new post</h2>
+            <p class="composer-card__prompt">
+              Learning Prompt: How does this color choice impact users with color vision deficiency?
+            </p>
+
+            <form id="post-form" data-post-form>
+              <label class="sr-only" for="post-content">Post content</label>
+              <textarea
+                id="post-content"
+                class="composer-card__textarea"
+                name="content"
+                data-post-content
+                placeholder="Write your learning note here..."
+                maxlength="500"
+                required
+              ></textarea>
+              <div class="composer-card__meta">
+                <p class="composer-card__counter" data-char-counter>0 / 500</p>
+                <p class="composer-card__origin" data-draft-origin hidden></p>
+              </div>
+
+              <div class="composer-card__tags" role="radiogroup" aria-label="Post tag" data-tag-group>
+                <button type="button" class="tag-pill is-active" data-tag="#Accessibility" aria-pressed="true">#Accessibility</button>
+                <button type="button" class="tag-pill" data-tag="#RGB_HSV" aria-pressed="false">#RGB_HSV</button>
+                <button type="button" class="tag-pill" data-tag="#Theory" aria-pressed="false">#Theory</button>
+                <button type="button" class="tag-pill" data-tag="#Palettes" aria-pressed="false">#Palettes</button>
+              </div>
+
+              <div class="composer-card__controls">
+                <div class="palette-builder" data-palette-builder>
+                  <div class="palette-builder__row" data-palette-row></div>
+                  <div class="palette-builder__actions">
+                    <button type="button" class="palette-builder__extract" data-palette-from-image>Extract Palette from Image</button>
+                  </div>
+                  <input id="attach-color-hex" class="hex-input" type="hidden" value="#2b78e4" maxlength="7" data-color-hex />
+                  <input id="attach-color" type="color" value="#2b78e4" data-color-picker hidden />
+                  <input type="hidden" data-palette-input value="2b78e4" />
+                </div>
+              </div>
+              <div class="composer-card__extras">
+                <label class="color-control" for="attach-image">
+                  <span>Attach Image (from game or upload)</span>
+                  <input id="attach-image" type="file" accept="image/*" data-image-input />
+                </label>
+              </div>
+              <div class="composer-card__image-preview" data-image-preview-wrap hidden>
+                <img src="" alt="Selected post attachment preview" data-image-preview />
+                <button type="button" class="post-action-btn" data-image-clear>Remove image</button>
+              </div>
+              <p class="composer-card__feedback sr-only" data-community-feedback role="status" aria-live="polite"></p>
+            </form>
+          </article>
+
+          <div class="feed-filter" aria-label="Feed filters">
+            <span class="feed-filter__label">Filter by:</span>
+            <button type="button" class="feed-filter__option is-active" data-filter="latest">Latest</button>
+            <button type="button" class="feed-filter__option" data-filter="helpful">Most Helpful</button>
+            <button type="button" class="feed-filter__option" data-filter="my-tags">My Tags</button>
+            <button type="button" class="feed-filter__option" data-filter="#Accessibility">#Accessibility</button>
+          </div>
+
+          <div class="post-preview-head">
+            <h2 class="post-preview-head__title">Post Preview (Latest 3)</h2>
+            <a class="post-preview-head__btn" href="community-posts.html">View Full Posts</a>
+          </div>
+          <section class="post-list" aria-live="polite" data-post-list></section>
+          <div class="feed-submit-wrap">
+            <button type="submit" form="post-form" class="btn-post feed-submit-btn">Post and Earn 5 points</button>
+          </div>
+        </section>
+
+        <aside class="community-side" aria-label="Community insights">
+          <section class="widget-card" aria-labelledby="progress-title">
+            <h2 id="progress-title">My Learning Progress</h2>
+            <div class="stats-grid">
+              <p class="stats-grid__item">
+                <span class="stats-grid__label">Total Points</span>
+                <span class="stats-grid__value" data-user-points>0</span>
+              </p>
+              <p class="stats-grid__item">
+                <span class="stats-grid__label">Posts</span>
+                <span class="stats-grid__value" data-user-posts>0</span>
+              </p>
+            </div>
+            <p class="widget-card__note" data-user-streak>Post today to start your streak.</p>
+            <p class="widget-card__note" data-user-goal>Today goal: publish one learning insight.</p>
+            <p class="widget-card__note" data-rank-trend>Weekly rank change: --</p>
+          </section>
+
+          <section class="widget-card" aria-labelledby="leaderboard-title">
+            <h2 id="leaderboard-title">Weekly Top Learners (7 days)</h2>
+            <ol class="leaderboard" data-weekly-leaderboard-list></ol>
+            <p class="widget-card__note">Weekly ranking uses `clw:activity-recorded` points from the last 7 days.</p>
+          </section>
+
+          <section class="widget-card" aria-labelledby="alltime-title">
+            <h2 id="alltime-title">All-time Top Learners</h2>
+            <ol class="leaderboard" data-total-leaderboard-list></ol>
+          </section>
+        </aside>
+      </div>
+    </main>
+
+    <div class="community-modal-backdrop" data-guidelines-modal hidden>
+      <section class="community-modal" role="dialog" aria-modal="true" aria-labelledby="guidelines-title">
+        <div class="community-modal__head">
+          <h2 id="guidelines-title">Community Guidelines</h2>
+          <button type="button" class="community-modal__close" data-close-guidelines aria-label="Close guidelines">×</button>
+        </div>
+        <ul class="community-modal__list">
+          <li>Share constructive learning reflections, not only final answers.</li>
+          <li>Use respectful language and explain why a color decision works.</li>
+          <li>Do not spam repeated posts or irrelevant links.</li>
+          <li>If you see problematic content, use Report to flag it.</li>
+        </ul>
+        <div class="community-modal__actions">
+          <button type="button" class="community-hero__cta" data-close-guidelines>Got it</button>
+        </div>
+      </section>
+    </div>
+
+    <div class="community-toast" data-community-toast hidden>
+      <p class="community-toast__message" data-community-toast-message></p>
+      <button type="button" class="community-toast__close" data-community-toast-close aria-label="Close message">×</button>
+    </div>
+
+    <div class="community-lightbox" data-image-lightbox hidden>
+      <div class="community-lightbox__inner">
+        <button type="button" class="community-modal__close" data-close-image-lightbox aria-label="Close image preview">×</button>
+        <img src="" alt="Expanded post preview" data-lightbox-image />
+      </div>
+    </div>
+
+    <footer class="site-footer" role="contentinfo">
+      <div id="site-footer"></div>
+    </footer>
+
+    <script src="js/theme.js" defer></script>
+    <script src="js/main.js" defer></script>
+    <script src="js/navbar.js" defer></script>
+    <script src="js/auth.js" defer></script>
+    <script src="js/pages/community.js" defer></script>
+  </body>
+</html>
