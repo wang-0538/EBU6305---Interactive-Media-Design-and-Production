@@ -888,6 +888,35 @@
       if (found) {
         window.location.href = buildUrl("test-results.html", { chapter: found.chapter, level: found.level, resultId: nextResultId, slideDir: dir });
       }
+      return;
+    }
+    var mapDock = target.closest("[data-map-dock]");
+    var mapDockTab = target.closest("[data-map-dock-tab]");
+    var mapDockScrim = target.closest("[data-map-dock-scrim]");
+    if (mapDockTab && mapDock) {
+      event.preventDefault();
+      var tabId = mapDockTab.getAttribute("data-map-dock-tab");
+      var cur = mapDock.getAttribute("data-active") || "";
+      if (mapDock.classList.contains("is-open") && cur === tabId) {
+        syncMapDockPanel(mapDock, null);
+      } else {
+        syncMapDockPanel(mapDock, tabId);
+      }
+      return;
+    }
+    if (mapDockScrim && mapDock) {
+      event.preventDefault();
+      syncMapDockPanel(mapDock, null);
+      return;
+    }
+    var openMapDock = rootEl.querySelector("[data-map-dock].is-open");
+    if (openMapDock) {
+      var inDockSheet = target.closest(".test-map-dock__sheet-wrap");
+      var inDockBar = target.closest(".test-map-dock__bar");
+      var inDockScrimHit = target.closest("[data-map-dock-scrim]");
+      if (!inDockSheet && !inDockBar && !inDockScrimHit) {
+        syncMapDockPanel(openMapDock, null);
+      }
     }
   }
 
@@ -932,6 +961,7 @@
   function renderPage() {
     try {
       var page = mainEl.getAttribute("data-test-page");
+      if (page !== "map") setTestMapDockOpenOnBody(false);
       if (page !== "quiz") quizDialog = null;
       if (page === "map") return renderMapPage();
       if (page === "quiz") return renderQuizPage();
@@ -944,7 +974,92 @@
         renderLinkButton("Back to map", "test.html", "test-link-btn--primary") +
         "</div></section>";
       if (window && window.console && console.error) console.error("[test-module] renderPage failed:", error);
+      setTestMapDockOpenOnBody(false);
     }
+  }
+
+  function setTestMapDockOpenOnBody(isOpen) {
+    if (typeof document === "undefined" || !document.body) return;
+    if (isOpen) document.body.classList.add("test-map-dock-open");
+    else document.body.classList.remove("test-map-dock-open");
+  }
+
+  function getMapRewardsAnchorEl() {
+    var dock = document.querySelector(".test-map-page > .test-map-dock");
+    try {
+      if (dock && typeof window.getComputedStyle === "function" && window.getComputedStyle(dock).display !== "none") {
+        var inDock = dock.querySelector("[data-rewards-card]");
+        if (inDock) return inDock;
+      }
+    } catch (e) {}
+    return document.querySelector(".test-sidebar--map [data-rewards-card]");
+  }
+
+  function syncMapDockPanel(dockRoot, panelId) {
+    if (!dockRoot) return;
+    var tabs = dockRoot.querySelectorAll("[data-map-dock-tab]");
+    var panels = dockRoot.querySelectorAll("[data-map-dock-panel]");
+    var i;
+    var tid;
+    var pid;
+    if (!panelId) {
+      dockRoot.classList.remove("is-open");
+      dockRoot.removeAttribute("data-active");
+      for (i = 0; i < tabs.length; i++) {
+        tabs[i].classList.remove("is-active");
+        tabs[i].setAttribute("aria-expanded", "false");
+      }
+      for (i = 0; i < panels.length; i++) {
+        panels[i].classList.remove("is-dock-active");
+      }
+      setTestMapDockOpenOnBody(false);
+      return;
+    }
+    dockRoot.classList.add("is-open");
+    dockRoot.setAttribute("data-active", panelId);
+    for (i = 0; i < tabs.length; i++) {
+      tid = tabs[i].getAttribute("data-map-dock-tab");
+      tabs[i].classList.toggle("is-active", tid === panelId);
+      tabs[i].setAttribute("aria-expanded", tid === panelId ? "true" : "false");
+    }
+    for (i = 0; i < panels.length; i++) {
+      pid = panels[i].getAttribute("data-map-dock-panel");
+      panels[i].classList.toggle("is-dock-active", pid === panelId);
+    }
+    setTestMapDockOpenOnBody(true);
+  }
+
+  function renderMapDockBar() {
+    function tab(panel, label) {
+      return (
+        '<button type="button" class="test-map-dock__tab" data-map-dock-tab="' +
+        panel +
+        '" aria-expanded="false" aria-controls="map-dock-panel-' +
+        panel +
+        '">' +
+        '<span class="test-map-dock__tab-ic" aria-hidden="true">' +
+        (panel === "snapshot"
+          ? IC.snapshotTitle
+          : panel === "review"
+            ? IC.bookTitle
+            : panel === "folder"
+              ? IC.folderTitle
+              : IC.rewardsTitle) +
+        "</span>" +
+        '<span class="visually-hidden">' +
+        label +
+        "</span>" +
+        "</button>"
+      );
+    }
+    return (
+      '<nav class="test-map-dock__bar" aria-label="Map summary panels">' +
+        tab("snapshot", "Progress Snapshot") +
+        tab("review", "Recommended Review") +
+        tab("folder", "Question Folder") +
+        tab("rewards", "Rewards") +
+      "</nav>"
+    );
   }
 
   function renderMapPage() {
@@ -961,33 +1076,58 @@
     var resumeHref = buildLastSubmitResumeHref(state.lastQuizSubmit);
 
     applyChapterTheme(chapter.id);
+    setTestMapDockOpenOnBody(false);
+
+    var snapshotInner =
+      '<div class="test-stat-grid">' +
+      renderStat("Whole Chapter", snapshot.chapterUnits, "Finished units in this chapter, all difficulties added together.") +
+      renderStat("Average Accuracy", snapshot.overallAccuracy, "Average accuracy across completed quizzes for the chapter and difficulty you are viewing (every full run counts).") +
+      renderStatLink("Last working on", resumeText, resumeHref, "The map unit (chapter, unit, difficulty) where you last pressed Submit in a normal path quiz - not mistakes review or bookmark practice.", "test-stat--full-row") +
+      "</div>";
+    var recommendedInner = renderLearnTopicList(recommended);
+    var mapAsideCards =
+      renderSidebarCard("Progress Snapshot", snapshotInner, IC.snapshotTitle) +
+      renderSidebarCard("Recommended Review", recommendedInner, IC.bookTitle) +
+      renderReviewCard(chapter.id, level.id) +
+      renderRewardsCard(totalScore);
+    var mapShellDock =
+      '<div class="test-map-dock" data-map-dock>' +
+      '<button type="button" class="test-map-dock__scrim" data-map-dock-scrim aria-label="Close panel"></button>' +
+      '<div class="test-map-dock__sheet-wrap">' +
+      renderSidebarCard("Progress Snapshot", snapshotInner, IC.snapshotTitle, "snapshot") +
+      renderSidebarCard("Recommended Review", recommendedInner, IC.bookTitle, "review") +
+      renderReviewCard(chapter.id, level.id, "folder") +
+      renderRewardsCard(totalScore, "rewards") +
+      "</div>" +
+      renderMapDockBar() +
+      "</div>";
 
     rootEl.innerHTML =
-      '<div class="test-map-layout">' +
-        '<div class="test-map-main">' +
-          '<section class="test-panel test-map-header-card">' +
-            '<div class="test-map-hcard__meta">' +
-              '<div class="test-kicker">' + chapter.eyebrow + '</div>' +
-              '<h2 class="test-map-heading">' + chapter.name + '</h2>' +
-              '<p class="test-map-intro">' + chapter.intro + '</p>' +
-            '</div>' +
-            '<div class="test-map-filters">' +
-              '<label class="test-map-topbar__field"><span>Chapter</span>' + renderMapChapterSelect(chapter.id) + '</label>' +
-              '<label class="test-map-topbar__field"><span>Difficulty</span>' + renderMapLevelSelect(level.id) + '</label>' +
-            '</div>' +
-          '</section>' +
-          '<div class="test-grid test-grid--map">' +
-            '<section class="test-panel test-map-shell">' +
-              '<div class="test-map-list">' + units.map(renderMapNode).join("") + '</div>' +
+      '<div class="test-map-page">' +
+        '<div class="test-map-layout">' +
+          '<div class="test-map-main">' +
+            '<section class="test-panel test-map-header-card">' +
+              '<div class="test-map-hcard__meta">' +
+                '<div class="test-kicker">' + chapter.eyebrow + '</div>' +
+                '<h2 class="test-map-heading">' + chapter.name + '</h2>' +
+                '<p class="test-map-intro">' + chapter.intro + '</p>' +
+              '</div>' +
+              '<div class="test-map-filters">' +
+                '<label class="test-map-topbar__field"><span>Chapter</span>' + renderMapChapterSelect(chapter.id) + '</label>' +
+                '<label class="test-map-topbar__field"><span>Difficulty</span>' + renderMapLevelSelect(level.id) + '</label>' +
+              '</div>' +
             '</section>' +
-          '</div>' +
+            '<div class="test-grid test-grid--map">' +
+              '<section class="test-panel test-map-shell">' +
+                '<div class="test-map-list">' + units.map(renderMapNode).join("") + "</div>" +
+              "</section>" +
+            "</div>" +
+          "</div>" +
+          '<aside class="test-sidebar test-sidebar--map">' +
+            mapAsideCards +
+          "</aside>" +
         "</div>" +
-        '<aside class="test-sidebar test-sidebar--map">' +
-          renderSidebarCard("Progress Snapshot", '<div class="test-stat-grid">' + renderStat("Whole Chapter", snapshot.chapterUnits, "Finished units in this chapter, all difficulties added together.") + renderStat("Average Accuracy", snapshot.overallAccuracy, "Average accuracy across completed quizzes for the chapter and difficulty you are viewing (every full run counts).") + renderStatLink("Last working on", resumeText, resumeHref, "The map unit (chapter, unit, difficulty) where you last pressed Submit in a normal path quiz - not mistakes review or bookmark practice.", "test-stat--full-row") + "</div>", IC.snapshotTitle) +
-          renderSidebarCard("Recommended Review", renderLearnTopicList(recommended), IC.bookTitle) +
-          renderReviewCard(chapter.id, level.id) +
-          renderRewardsCard(totalScore) +
-        "</aside>" +
+        mapShellDock +
       "</div>";
 
     checkAndShowBadgeReveal();
@@ -1095,8 +1235,8 @@
 
     var genieTarget =
       originEl ||
-      document.querySelector('[data-rewards-card]') ||
-      document.querySelector('.reward-badges');
+      getMapRewardsAnchorEl() ||
+      document.querySelector(".reward-badges");
     var closeBtn = overlay.querySelector('.badge-reveal__close');
     if (closeBtn) {
       closeBtn.addEventListener('click', function () {
@@ -2542,19 +2682,21 @@
     var explanationOpen = !!mistake.showExplanation;
     return '<article class="mistake-card mistake-card--review"><div class="mistake-item__header"><div><div class="test-inline-meta"><span class="mistake-tag">' + getLevel(mistake.level).name + '</span><span class="mistake-tag">' + mistake.topic + '</span><span class="mistake-tag">' + (mistake.mastered ? "Reviewed" : "Pending") + '</span></div><h3 class="mistake-card__title">' + mistake.prompt + '</h3></div></div><div class="mistake-answer-panels"><div class="mistake-answer-panel is-wrong"><span class="mistake-answer-panel__label">Your answer</span><strong>' + getMistakeUserAnswer(mistake) + '</strong></div><div class="mistake-answer-panel is-correct"><span class="mistake-answer-panel__label">Correct answer</span><strong>' + getMistakeCorrectAnswer(mistake) + '</strong></div></div>' + (explanationOpen ? '<div class="mistake-explanation"><strong>Explanation:</strong> ' + mistake.correctConcept + '<br /><span class="test-card-copy">' + mistake.mistakeReason + '</span></div>' : "") + '<div class="mistake-item__footer"><div class="mistake-item__meta"><span>Attempts: ' + (mistake.attemptCount || 1) + '</span><span>Last attempt: ' + formatDate(mistake.lastWrongAt) + '</span></div><div class="mistake-item__controls"><button type="button" class="test-inline-btn" data-toggle-explanation="' + mistake.id + '">' + (explanationOpen ? "Hide explanation" : "View explanation") + '</button><button type="button" class="test-action test-action--primary" data-mark-mastered="' + mistake.id + '">' + (mistake.mastered ? "Mark as pending" : "Mark reviewed") + '</button></div></div></article>';
   }
-  function renderSidebarCard(title, inner, iconHtml) {
+  function renderSidebarCard(title, inner, iconHtml, dockPanelId) {
     var head = iconHtml
       ? '<h3 class="test-card-title test-card-title--with-icon"><span class="test-card-title__icon">' + iconHtml + '</span><span class="test-card-title__text">' + title + "</span></h3>"
       : '<h3 class="test-card-title">' + title + "</h3>";
-    return "<section class=\"test-sidebar-card\">" + head + inner + "</section>";
+    var dockAttr = dockPanelId ? ' data-map-dock-panel="' + dockPanelId + '" id="map-dock-panel-' + dockPanelId + '"' : "";
+    return "<section class=\"test-sidebar-card\"" + dockAttr + ">" + head + inner + "</section>";
   }
   function renderSidebarLinkCard(title, inner, href) { return '<a class="test-sidebar-card test-sidebar-card--link" href="' + href + '"><h3 class="test-card-title">' + title + "</h3>" + inner + "</a>"; }
-  function renderReviewCard(chapterId, levelId) {
+  function renderReviewCard(chapterId, levelId, dockPanelId) {
     var mistakesUrl = buildUrl("test-mistakes.html", {});
     var savedUrl = buildUrl("test-mistakes.html", { tab: "flagged" });
     var mistakeSvg = '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4 13.59L14.59 17 12 14.41 9.41 17 8 15.59l2.59-2.59L8 10.41 9.41 9 12 11.59 14.59 9 16 10.41l-2.59 2.59L16 15.59z"/></svg>';
     var bookmarkSvg = '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>';
-    return '<section class="test-sidebar-card">' +
+    var dockAttr = dockPanelId ? ' data-map-dock-panel="' + dockPanelId + '" id="map-dock-panel-' + dockPanelId + '"' : "";
+    return '<section class="test-sidebar-card"' + dockAttr + ">" +
       '<h3 class="test-card-title test-card-title--with-icon"><span class="test-card-title__icon">' + IC.folderTitle + '</span><span class="test-card-title__text">Question Folder</span></h3>' +
       '<div class="review-btn-row">' +
         '<a class="review-btn review-btn--mistakes" href="' + mistakesUrl + '">' + mistakeSvg + '<span>Mistakes</span></a>' +
@@ -2585,11 +2727,12 @@
     );
   }
 
-  function renderRewardsCard(totalScore) {
+  function renderRewardsCard(totalScore, dockPanelId) {
     var starSvg = '<svg viewBox="0 0 24 24" aria-hidden="true" width="30" height="30" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.62L12 2 9.19 8.62 2 9.24l5.46 4.73L5.82 21z"/></svg>';
     var flameSvg = '<svg viewBox="0 0 24 24" aria-hidden="true" width="30" height="30" fill="currentColor"><path d="M13.5.67s.74 2.65.74 4.8c0 2.06-1.35 3.73-3.41 3.73-2.07 0-3.63-1.67-3.63-3.73l.03-.36C5.21 7.51 4 10.62 4 14c0 4.42 3.58 8 8 8s8-3.58 8-8c0-5.39-2.59-10.2-6.5-13.33zM11.71 19c-1.78 0-3.22-1.4-3.22-3.14 0-1.62 1.05-2.76 2.81-3.12 1.77-.36 3.6-1.21 4.62-2.58.39 1.29.59 2.65.59 4.04 0 2.65-2.15 4.8-4.8 4.8z"/></svg>';
     var trophySvg = '<svg viewBox="0 0 24 24" aria-hidden="true" width="30" height="30" fill="currentColor"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94.63 1.5 1.98 2.63 3.61 2.96V19H9v2h6v-2h-2v-2.1c1.63-.33 2.98-1.46 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v2.83C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z"/></svg>';
-    return '<section class="test-sidebar-card" data-rewards-card>' +
+    var dockAttr = dockPanelId ? ' data-map-dock-panel="' + dockPanelId + '" id="map-dock-panel-' + dockPanelId + '"' : "";
+    return '<section class="test-sidebar-card" data-rewards-card' + dockAttr + ">" +
       '<h3 class="test-card-title test-card-title--with-icon"><span class="test-card-title__icon">' + IC.rewardsTitle + '</span><span class="test-card-title__text">Rewards</span></h3>' +
       '<div class="reward-grid">' +
         '<div class="reward-item">' +
