@@ -193,7 +193,7 @@
   /** Transient UI while quiz page is active: { kind: "hint" } | { kind: "exit", exitHref: string } */
   var quizDialog = null;
   /* Solo-practice workbench state (transient, also reflected in URL ?solo=type:id) */
-  var soloState = null; // { type, itemId, draft, submitted, isCorrect }
+  var soloState = null; // { type, itemId, draft, submitted, isCorrect, filterSheet? }
   var IC = {
     prev: '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>',
     next: '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4z"/></svg>',
@@ -847,6 +847,15 @@
     if (practiceBtn) {
       event.preventDefault();
       enterSoloPractice(practiceBtn.getAttribute("data-practice-type"), practiceBtn.getAttribute("data-practice-question"));
+      return;
+    }
+    var soloFilterToggle = target.closest("[data-solo-toggle-filter]");
+    if (soloFilterToggle) {
+      event.preventDefault();
+      if (soloState) {
+        soloState.filterSheet = !soloState.filterSheet;
+        renderPage();
+      }
       return;
     }
     var soloAction = target.closest("[data-solo-action]");
@@ -1803,8 +1812,8 @@
     var levelFilter = getMistakeLevelFilter();
     var statusFilter = getMistakeStatusFilter();
     var tab = getMistakeTab();
-    var page = getMistakePage();
-    var PER_PAGE = 9;
+    var rawMistakePage = getMistakePage();
+    var PER_PAGE = isTestMistakesNarrowViewport() ? 3 : 9;
 
     // Use the home theme colours, not the chapter override
     mainEl.style.removeProperty("--theme-stop-2");
@@ -1837,17 +1846,19 @@
     var bodyHtml;
     if (tab === "flagged") {
       var fTotalPages = Math.max(1, Math.ceil(allFlagged.length / PER_PAGE));
-      var fPageItems = allFlagged.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+      var fPage = Math.min(rawMistakePage, fTotalPages);
+      var fPageItems = allFlagged.slice((fPage - 1) * PER_PAGE, fPage * PER_PAGE);
       bodyHtml =
         renderMistakesToolbar(chapterFilter, levelFilter, null) +
         (fPageItems.length
           ? '<div class="mistake-compact-grid">' + fPageItems.map(renderFlaggedCompactCard).join("") + '</div>'
           : '<div class="mistakes-empty mistakes-empty--stacked"><p class="mistakes-empty__line">No bookmarked questions yet.</p><p class="mistakes-empty__line">Use the <span class="mistakes-empty__ic" aria-hidden="true">' + bookmarkSvg + '</span> button during a quiz to save questions here.</p></div>') +
-        renderPagination(page, fTotalPages, chapterFilter, levelFilter, tab, "");
+        renderPagination(fPage, fTotalPages, chapterFilter, levelFilter, tab, "");
     } else {
       var visible = getVisibleMistakes(chapterFilter, levelFilter, statusFilter);
       var mTotalPages = Math.max(1, Math.ceil(visible.length / PER_PAGE));
-      var mPageItems = visible.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+      var mPage = Math.min(rawMistakePage, mTotalPages);
+      var mPageItems = visible.slice((mPage - 1) * PER_PAGE, mPage * PER_PAGE);
       bodyHtml =
         renderMistakesToolbar(chapterFilter, levelFilter, statusFilter) +
         '<div class="mistakes-stats-row">' +
@@ -1860,7 +1871,7 @@
         (mPageItems.length
           ? '<div class="mistake-compact-grid">' + mPageItems.map(renderMistakeCompactCard).join("") + '</div>'
           : '<div class="mistakes-empty">No mistakes match the current filters.</div>') +
-        renderPagination(page, mTotalPages, chapterFilter, levelFilter, tab, statusFilter);
+        renderPagination(mPage, mTotalPages, chapterFilter, levelFilter, tab, statusFilter);
     }
 
     var mainBodyHtml;
@@ -2991,6 +3002,9 @@
   /* ── Question Folder page renderers ── */
   function getMistakeTab() { return getParams().tab === "flagged" ? "flagged" : "mistakes"; }
   function getMistakePage() { return Math.max(1, parseInt(getParams().page, 10) || 1); }
+  function isTestMistakesNarrowViewport() {
+    return typeof window.matchMedia !== "undefined" && window.matchMedia("(max-width: 60rem)").matches;
+  }
 
   function renderMistakesToolbar(chapterFilter, levelFilter, statusFilter) {
     return '<div class="mistakes-toolbar">' +
@@ -3095,12 +3109,12 @@
     var type = params.solo.slice(0, sep);
     var id = params.solo.slice(sep + 1);
     if ((type === "mistake" || type === "flagged") && id) {
-      soloState = { type: type, itemId: id, draft: null, submitted: false, isCorrect: false };
+      soloState = { type: type, itemId: id, draft: null, submitted: false, isCorrect: false, filterSheet: false };
     }
   }
 
   function enterSoloPractice(type, itemId) {
-    soloState = { type: type, itemId: itemId, draft: null, submitted: false, isCorrect: false };
+    soloState = { type: type, itemId: itemId, draft: null, submitted: false, isCorrect: false, filterSheet: false };
     var params = getParams();
     var next = { chapter: params.chapter || "", level: params.level || "", tab: params.tab || "", status: params.status || "", solo: type + ":" + itemId };
     if (window.history && window.history.replaceState) window.history.replaceState(null, "", buildUrl("test-mistakes.html", next));
@@ -3158,6 +3172,7 @@
     var correct = evaluate(question, soloState.draft);
     soloState.submitted = true;
     soloState.isCorrect = correct;
+    soloState.filterSheet = false;
     if (correct) playSfx(SFX_CORRECT);
     else playSfx(SFX_WRONG);
     var now = new Date().toISOString();
@@ -3204,7 +3219,7 @@
     });
     if (!inList && listItems.length > 0) {
       var firstId = tab === "flagged" ? listItems[0].questionId : listItems[0].id;
-      soloState = { type: type, itemId: firstId, draft: null, submitted: false, isCorrect: false };
+      soloState = { type: type, itemId: firstId, draft: null, submitted: false, isCorrect: false, filterSheet: false };
       itemId = firstId;
       item = getSoloItem(type, itemId);
     }
@@ -3215,10 +3230,28 @@
         '</div>'
       : renderSoloLeft(item, type);
 
+    var narrowSolo = isTestMistakesNarrowViewport();
+    if (!narrowSolo && soloState.filterSheet) soloState.filterSheet = false;
+
+    var listHtml = renderSoloRight(itemId, tab, listItems, type);
+    if (narrowSolo) {
+      var filterOpen = !!soloState.filterSheet;
+      var menuBtn =
+        '<button type="button" class="solo-filter-menu-btn" data-solo-toggle-filter aria-expanded="' +
+        (filterOpen ? "true" : "false") +
+        '" aria-label="' +
+        (filterOpen ? "Back to question" : "Questions in this filter") +
+        '">' +
+        '<svg class="solo-filter-menu-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M5 7h14M5 12h14M5 17h14"/></svg>' +
+        "</button>";
+      var mainInner = '<div class="solo-narrow-main-wrap">' + menuBtn + (filterOpen ? listHtml : emptyMain) + "</div>";
+      return '<div class="solo-workbench solo-workbench--narrow">' + '<div class="solo-workbench__main">' + mainInner + "</div>" + "</div>";
+    }
+
     return '<div class="solo-workbench">' +
       '<div class="solo-workbench__main">' + emptyMain + '</div>' +
-      '<aside class="solo-workbench__sidebar">' + renderSoloRight(itemId, tab, listItems, type) + '</aside>' +
-    '</div>';
+      '<aside class="solo-workbench__sidebar">' + listHtml + "</aside>" +
+    "</div>";
   }
 
   function renderSoloLeft(item, type) {

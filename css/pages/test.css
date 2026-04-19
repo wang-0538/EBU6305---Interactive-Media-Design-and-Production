@@ -3735,6 +3735,60 @@ a.results-mini-ov__block:focus-visible {
   align-items: start;
 }
 
+.solo-workbench--narrow {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.85rem;
+}
+
+.solo-narrow-main-wrap {
+  position: relative;
+}
+
+.solo-filter-menu-btn {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.8rem;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1.5px solid var(--test-border);
+  border-radius: 0.55rem;
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--test-ink);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(16, 35, 60, 0.06);
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.solo-filter-menu-btn:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 45%, var(--test-border));
+  color: var(--color-primary);
+}
+
+.solo-filter-menu-btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.solo-filter-menu-icon {
+  display: block;
+}
+
+.solo-narrow-main-wrap > .solo-panel {
+  padding-right: 3.4rem;
+}
+
+.solo-narrow-main-wrap > .solo-list .solo-list__header {
+  padding-right: 3.25rem;
+}
+
 .solo-workbench__main { min-width: 0; }
 
 .solo-panel {
@@ -3898,19 +3952,27 @@ a.results-mini-ov__block:focus-visible {
 }
 
 @media (max-width: 64rem) {
-  .solo-workbench {
+  .solo-workbench:not(.solo-workbench--narrow) {
     grid-template-columns: minmax(0, 1fr) 17rem;
   }
 }
 @media (max-width: 48rem) {
-  .solo-workbench {
+  .solo-workbench:not(.solo-workbench--narrow) {
     grid-template-columns: minmax(0, 1fr);
   }
-  .solo-workbench__sidebar {
+  .solo-workbench:not(.solo-workbench--narrow) .solo-workbench__sidebar {
     position: static;
     order: -1;
   }
-  .solo-list__scroll { max-height: 45vw; }
+  .solo-workbench:not(.solo-workbench--narrow) .solo-list__scroll {
+    max-height: 45vw;
+  }
+}
+
+@media (max-width: 60rem) {
+  .solo-workbench--narrow .solo-list__scroll {
+    max-height: min(70vh, 26rem);
+  }
 }
 
 /* ═══════════════════════════════════════
