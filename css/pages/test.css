@@ -857,6 +857,10 @@ a.test-stat--link:focus-visible {
   font-size: 0.92rem;
 }
 
+.quiz-workspace-topbar__dock {
+  display: none;
+}
+
 .quiz-workspace-topbar__progress-copy {
   color: var(--test-muted);
   font-size: 0.7rem;
@@ -1763,6 +1767,18 @@ a.test-stat--link:focus-visible {
   background: rgba(15, 23, 42, 0.38);
   backdrop-filter: blur(6px);
   animation: quizDialogFadeIn 0.18s ease;
+}
+
+/* Dialog markup lives inside <main>. Globally, .site-header uses a higher z-index than <main>,
+   so the fixed backdrop never stacked above the header (Menu + avatar stayed sharp). While a
+   quiz dialog is open, lift <main> above the header so the dim/blur covers the whole viewport. */
+body.test-module:has(.quiz-dialog-backdrop) .site-header {
+  z-index: 0;
+}
+
+body.test-module:has(.quiz-dialog-backdrop) main.page-test {
+  position: relative;
+  z-index: 100;
 }
 
 @keyframes quizDialogFadeIn {
@@ -2798,8 +2814,129 @@ a.results-mini-ov__block:focus-visible {
   }
 
   .quiz-workspace__sidebar {
-    border-left: 0;
-    border-top: 1px solid rgba(15, 23, 42, 0.08);
+    display: none;
+  }
+
+  .quiz-workspace-topbar {
+    justify-content: space-between;
+    gap: 0.65rem;
+    padding-inline: 1.25rem;
+    flex-wrap: nowrap;
+  }
+
+  .quiz-workspace-topbar__backblock {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .quiz-workspace-topbar__dock {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    position: relative;
+    flex-shrink: 0;
+    z-index: 50;
+  }
+
+  /* Let dropdown sheets paint outside the shell clip while a panel is open (no full-page scrim). */
+  .quiz-shell--workspace:has([data-quiz-workspace-dock].is-open) {
+    overflow: visible;
+  }
+
+  /* Workspace row follows the topbar in DOM; lift the bar (and its dropdown) above the main column. */
+  .quiz-shell--workspace:has([data-quiz-workspace-dock].is-open) .quiz-workspace-topbar {
+    position: relative;
+    z-index: 30;
+  }
+
+  .quiz-workspace-topbar__dock-icons {
+    position: relative;
+    z-index: 55;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .quiz-workspace-dock-slot {
+    position: relative;
+  }
+
+  .quiz-workspace-dock__tab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    border: 1.5px solid rgba(15, 23, 42, 0.12);
+    border-radius: 0.85rem;
+    background: rgba(255, 255, 255, 0.96);
+    color: var(--test-ink);
+    cursor: pointer;
+    transition:
+      border-color 0.15s ease,
+      background 0.15s ease,
+      box-shadow 0.18s ease,
+      transform 0.15s ease;
+    font: inherit;
+  }
+
+  .quiz-workspace-dock__tab:hover {
+    border-color: var(--color-primary);
+    background: #ffffff;
+  }
+
+  .quiz-workspace-dock__tab.is-active {
+    border-color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 14%, white);
+    box-shadow:
+      0 0 0 2px color-mix(in srgb, var(--color-primary) 32%, transparent),
+      0 3px 10px color-mix(in srgb, var(--color-primary) 22%, transparent);
+    transform: translateY(1px);
+  }
+
+  .quiz-workspace-dock__tab-ic {
+    display: flex;
+    line-height: 0;
+    transform: scale(1.12);
+  }
+
+  .quiz-workspace-dock__tab-ic svg {
+    display: block;
+  }
+
+  .quiz-workspace-dock__sheet {
+    display: none;
+    position: absolute;
+    top: calc(100% + 0.35rem);
+    width: min(22rem, calc(100dvw - 1.25rem));
+    max-width: calc(100dvw - 1.25rem);
+    max-height: min(70vh, 28rem);
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    z-index: 60;
+    box-sizing: border-box;
+    filter: drop-shadow(0 16px 28px rgba(40, 53, 90, 0.12));
+  }
+
+  /* Anchor to the icon’s inner edge so the panel grows into the viewport (not off-screen to the right). */
+  .quiz-workspace-dock-slot--overview .quiz-workspace-dock__sheet {
+    left: auto;
+    right: 0;
+  }
+
+  .quiz-workspace-dock-slot--analysis .quiz-workspace-dock__sheet {
+    left: auto;
+    right: 0;
+  }
+
+  .quiz-workspace-dock__sheet.is-dock-active {
+    display: block;
+  }
+
+  .quiz-workspace-dock__sheet .quiz-sidecard {
+    margin: 0;
   }
 
   .test-map-layout {
@@ -2989,15 +3126,6 @@ a.results-mini-ov__block:focus-visible {
     z-index: 50;
   }
 
-  .quiz-workspace-topbar {
-    grid-template-columns: minmax(0, 1fr);
-    justify-items: stretch;
-  }
-
-  .quiz-workspace-topbar__progress {
-    width: 100%;
-  }
-
   .quiz-workspace__main,
   .quiz-workspace__sidebar {
     padding: 1.25rem;
@@ -3044,8 +3172,6 @@ a.results-mini-ov__block:focus-visible {
   }
 
   .quiz-topbar__row,
-  .quiz-workspace-topbar,
-  .quiz-workspace-topbar__backblock,
   .quiz-workspace-header__top,
   .quiz-workspace-header__progress-row,
   .test-hero__top,
@@ -3074,16 +3200,37 @@ a.results-mini-ov__block:focus-visible {
     font-size: clamp(0.855rem, 1.08vw, 1.17rem);
   }
 
-  .quiz-workspace-nav {
-    grid-template-columns: minmax(0, 1fr);
+  /* Keep quiz title + back row and nav buttons horizontal like wide layout */
+  .quiz-workspace-topbar__backblock {
+    flex-wrap: nowrap;
   }
 
-  .quiz-nav-btn,
-  .quiz-nav-btn.is-hint,
-  .quiz-nav-btn.is-next {
+  .quiz-workspace-topbar__heading {
+    min-width: 0;
+  }
+
+  .quiz-workspace-topbar__heading strong {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .quiz-workspace-nav {
     width: 100%;
     min-width: 0;
-    justify-self: stretch;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .quiz-nav-btn {
+    min-width: 0;
+    padding-inline: 0.5rem;
+    font-size: 0.74rem;
+  }
+
+  .quiz-nav-btn.is-hint,
+  .quiz-nav-btn.is-next {
+    min-width: 0;
   }
 
   .quiz-index-grid {
