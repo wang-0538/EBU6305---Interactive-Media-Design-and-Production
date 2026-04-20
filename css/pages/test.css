@@ -2834,14 +2834,14 @@ a.results-mini-ov__block:focus-visible {
     min-width: 0;
   }
 
-  .quiz-workspace-topbar__close--browse {
+  .quiz-workspace-topbar__close.quiz-workspace-topbar__close--browse:has(span) {
     width: 3.25rem;
     padding: 0;
     justify-content: center;
     gap: 0;
   }
 
-  .quiz-workspace-topbar__close--browse span {
+  .quiz-workspace-topbar__close.quiz-workspace-topbar__close--browse:has(span) span {
     display: none;
   }
 
