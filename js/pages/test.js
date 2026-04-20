@@ -1469,7 +1469,7 @@
       body =
         "If you reveal a hint, you will earn <strong>fewer points</strong> on this question when you answer correctly. Continue?";
       confirmLabel = "Show hint";
-      cancelLabel = "I’ll figure it out myself!";
+      cancelLabel = "Not now";
       cancelClass = "quiz-dialog__btn quiz-dialog__btn--primary";
       confirmClass = "quiz-dialog__btn quiz-dialog__btn--ghost";
     } else {
@@ -1892,10 +1892,10 @@
     var tabsHtml =
       '<nav class="mistakes-tabs" aria-label="Question folder sections">' +
         '<a class="mistakes-tab' + (tab === "mistakes" ? " is-active" : "") + '" href="' + mkTabUrl + '">' +
-          mistakeSvg + ' Mistakes<span class="mistakes-tab__badge">' + allMistakes.length + '</span>' +
+          mistakeSvg + ' Mistakes' +
         '</a>' +
         '<a class="mistakes-tab' + (tab === "flagged" ? " is-active" : "") + '" href="' + flTabUrl + '">' +
-          bookmarkSvg + ' Bookmarked<span class="mistakes-tab__badge">' + allFlagged.length + '</span>' +
+          bookmarkSvg + ' Bookmarked' +
         '</a>' +
       '</nav>';
 
