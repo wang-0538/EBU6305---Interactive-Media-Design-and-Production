@@ -11,6 +11,9 @@
   var SFX_HINT = SFX_BASE + "hint.mp3";
   var SFX_CORRECT = SFX_BASE + "correct_answer.mp3";
   var SFX_WRONG = SFX_BASE + "wrong_answer.mp3";
+  var SFX_POOL_SIZE = 4;
+  var sfxPoolMap = {};
+  var sfxPoolCursor = {};
   var EXTERNAL_QUESTION_BANK = window.CLWTestQuestionBank || null;
   var LEARN_SECTION_MAP = {
     basics: {
@@ -226,6 +229,7 @@
 
   syncSelectionFromQuery();
   applyChapterTheme(resolveChapterId());
+  initSfxPool();
   initSoloState();
   bindEvents();
   bindAuthStateSync();
@@ -2937,6 +2941,34 @@
       : '<h2 class="results-card__title">' + title + "</h2>";
     return "<section class=\"results-card\">" + head + inner + "</section>";
   }
+  function initSfxPool() {
+    var tracks = [SFX_STAR, SFX_CONFETTI, SFX_TADA, SFX_HINT, SFX_CORRECT, SFX_WRONG];
+    var i;
+    var j;
+    for (i = 0; i < tracks.length; i++) {
+      var src = tracks[i];
+      var pool = [];
+      for (j = 0; j < SFX_POOL_SIZE; j++) {
+        try {
+          var a = new Audio(src);
+          a.preload = "auto";
+          pool.push(a);
+        } catch (e) {}
+      }
+      if (pool.length) {
+        sfxPoolMap[src] = pool;
+        sfxPoolCursor[src] = 0;
+      }
+    }
+  }
+  function getPooledSfxAudio(src) {
+    var pool = sfxPoolMap[src];
+    if (!pool || !pool.length) return null;
+    var cursor = Number(sfxPoolCursor[src]) || 0;
+    var audio = pool[cursor % pool.length];
+    sfxPoolCursor[src] = (cursor + 1) % pool.length;
+    return audio;
+  }
   function playSfx(src, opts) {
     try {
       var conf = opts || {};
@@ -2948,8 +2980,10 @@
         (function (idx) {
           setTimeout(function () {
             try {
-              var a = new Audio(src);
+              var a = getPooledSfxAudio(src);
+              if (!a) a = new Audio(src);
               a.volume = Math.max(0, Math.min(1, baseVol));
+              try { a.currentTime = 0; } catch (resetError) {}
               var p = a.play();
               if (p && typeof p.catch === "function") p.catch(function () {});
             } catch (e) {}
