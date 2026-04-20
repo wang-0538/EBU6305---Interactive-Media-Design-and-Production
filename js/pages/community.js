@@ -216,11 +216,14 @@
       '<div class="palette-strip" role="list" aria-label="Palette colors">' +
       palette
         .map(function (hex, index) {
+          var displayHex = normalizeHex(hex).replace("#", "").toUpperCase();
+          var textColor = getContrastText(hex);
           return (
             '<div class="palette-strip__cell" role="listitem" data-palette-cell="' + index + '">' +
-              '<button type="button" class="palette-strip__block" data-palette-block="' + index + '" style="background:' + hex + '" aria-label="Edit color ' + hex + '"></button>' +
-              '<div class="palette-strip__actions">' +
-                '<button type="button" class="palette-strip__action" data-palette-copy="' + index + '" aria-label="Copy color ' + hex + '">Copy</button>' +
+              '<button type="button" class="palette-strip__block" data-palette-block="' + index + '" style="background:' + hex + ';color:' + textColor + '" aria-label="Edit color ' + hex + '">' +
+                '<span class="palette-strip__hex">' + displayHex + "</span>" +
+              "</button>" +
+              '<div class="palette-strip__actions" style="color:' + textColor + '">' +
                 '<button type="button" class="palette-strip__action palette-strip__action--danger" data-palette-delete="' + index + '" aria-label="Delete color ' + hex + '">Delete</button>' +
               "</div>" +
             "</div>"
@@ -401,6 +404,22 @@
 
   function getCommunityView() {
     return document.body && document.body.getAttribute("data-community-view") === "all" ? "all" : "preview";
+  }
+
+  function isMobileViewport() {
+    return !!(window.matchMedia && window.matchMedia("(max-width: 48rem)").matches);
+  }
+
+  function updateOverlayScrollLock() {
+    var body = document.body;
+    if (!body) return;
+    var hasGuidelinesOpen = false;
+    var hasLightboxOpen = false;
+    var guidelines = document.querySelector("[data-guidelines-modal]");
+    var lightbox = document.querySelector("[data-image-lightbox]");
+    if (guidelines && !guidelines.hidden) hasGuidelinesOpen = true;
+    if (lightbox && !lightbox.hidden) hasLightboxOpen = true;
+    body.classList.toggle("is-scroll-locked", hasGuidelinesOpen || hasLightboxOpen);
   }
 
   function readPosts() {
@@ -704,9 +723,17 @@
   function renderPaletteHtml(post) {
     var palette = normalizePaletteList(post && post.paletteHexes ? post.paletteHexes : [post.colorHex], post.colorHex);
     return (
-      '<div class="post-palette">' +
-      palette.map(function (hex) {
-        return '<span class="post-palette__chip" style="background:' + hex + '" title="' + hex + '"></span>';
+      '<div class="post-palette" role="list" aria-label="Post palette colors">' +
+      palette.map(function (hex, index) {
+        var displayHex = normalizeHex(hex).replace("#", "").toUpperCase();
+        var textColor = getContrastText(hex);
+        return (
+          '<div class="post-palette__cell" role="listitem" data-post-palette-cell="' + index + '">' +
+            '<div class="post-palette__block" style="background:' + hex + ';color:' + textColor + '" title="' + hex + '">' +
+              '<span class="post-palette__hex">' + displayHex + "</span>" +
+            "</div>" +
+          "</div>"
+        );
       }).join("") +
       "</div>"
     );
@@ -739,7 +766,6 @@
         var liked = hasLiked(post);
         var hidden = isPostHiddenForUser(post.id, currentUser);
         var originText = escapeHtml(formatOrigin(post));
-        var colorText = getContrastText(hex);
         var initial = escapeHtml((post.author || "?").slice(0, 1).toUpperCase());
         var paletteHtml = renderPaletteHtml(post);
         var imageHtml = renderImageHtml(post);
@@ -764,7 +790,6 @@
           originMetaHtml +
           imageHtml +
           paletteHtml +
-          '<div class="post-color" style="background:' + hex + ';color:' + colorText + '">Attached color ' + hex + '</div>' +
           '<footer class="post-footer">' +
           '<button type="button" class="like-btn' + (liked ? ' is-liked' : '') + '" data-like-id="' + post.id + '" aria-pressed="' + (liked ? 'true' : 'false') + '">' + (liked ? 'Liked ' : 'Like ') + likes + '</button>' +
           '<span class="post-points">Rewarded +' + points + ' pts</span>' +
@@ -1157,12 +1182,18 @@
 
   function openGuidelines() {
     var modal = document.querySelector("[data-guidelines-modal]");
-    if (modal) modal.hidden = false;
+    if (modal) {
+      modal.hidden = false;
+      updateOverlayScrollLock();
+    }
   }
 
   function closeGuidelines() {
     var modal = document.querySelector("[data-guidelines-modal]");
-    if (modal) modal.hidden = true;
+    if (modal) {
+      modal.hidden = true;
+      updateOverlayScrollLock();
+    }
   }
 
   function openImageLightbox(src) {
@@ -1173,6 +1204,7 @@
     if (!safe) return;
     img.src = safe;
     modal.hidden = false;
+    updateOverlayScrollLock();
   }
 
   function closeImageLightbox() {
@@ -1180,6 +1212,16 @@
     var img = document.querySelector("[data-lightbox-image]");
     if (img) img.src = "";
     if (modal) modal.hidden = true;
+    updateOverlayScrollLock();
+  }
+
+  function scrollDetailIntoViewOnMobile() {
+    if (getCommunityView() !== "all" || !isMobileViewport()) return;
+    var detail = document.querySelector("[data-post-detail]");
+    if (!detail) return;
+    window.requestAnimationFrame(function () {
+      detail.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   }
 
   function bindTagKeyboardNavigation() {
@@ -1298,16 +1340,6 @@
           setComposerPalette(nextPalette, true);
           return;
         }
-        var copyBtn = event.target.closest("[data-palette-copy]");
-        if (copyBtn) {
-          var copyIdx = Number(copyBtn.getAttribute("data-palette-copy"));
-          if (!Number.isFinite(copyIdx)) return;
-          var copyPalette = readPaletteFromHiddenInput();
-          copyText(copyPalette[copyIdx]).then(function (ok) {
-            setFeedback(ok ? "Color copied." : "Copy failed. Please try again.", ok ? "success" : "error");
-          });
-          return;
-        }
         var deleteBtn = event.target.closest("[data-palette-delete]");
         if (deleteBtn) {
           var deleteIdx = Number(deleteBtn.getAttribute("data-palette-delete"));
@@ -1400,6 +1432,7 @@
         if (selectBtn) {
           state.selectedPostId = selectBtn.getAttribute("data-post-select") || "";
           renderPosts();
+          scrollDetailIntoViewOnMobile();
         }
       });
     }
@@ -1459,6 +1492,7 @@
     bindEvents();
     applyDraftToComposer();
     refreshAll();
+    updateOverlayScrollLock();
   }
 
   if (document.readyState === "loading") {
