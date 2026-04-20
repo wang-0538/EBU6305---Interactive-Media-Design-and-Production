@@ -1423,9 +1423,6 @@
               renderHintBlock(question, session) +
             '</section>' +
             (currentResult ? renderFeedback(question, currentResult) : "") +
-            '<div class="quiz-workspace-live-strip" aria-label="Time and score">' +
-              renderQuizLiveTimeScoreRow(session) +
-            "</div>" +
             '<div class="quiz-workspace-nav">' +
               renderQuizNavButton(IC.prev + ' Previous', "prev", session.currentIndex === 0, "is-prev") +
               renderQuizNavButton(IC.hint + ' Hint', "hint", !!currentResult, "is-hint") +
