@@ -2342,6 +2342,11 @@ a.results-mini-ov__block:focus-visible {
   margin-left: auto;
 }
 
+.results-actions-bar .results-action-summarize,
+.results-actions-bar .label-mobile {
+  display: none;
+}
+
 /* keep old class working if referenced elsewhere */
 .results-hero {
   display: grid;
@@ -2829,6 +2834,17 @@ a.results-mini-ov__block:focus-visible {
     min-width: 0;
   }
 
+  .quiz-workspace-topbar__close--browse {
+    width: 3.25rem;
+    padding: 0;
+    justify-content: center;
+    gap: 0;
+  }
+
+  .quiz-workspace-topbar__close--browse span {
+    display: none;
+  }
+
   .quiz-workspace-topbar__dock {
     display: flex;
     flex-direction: column;
@@ -3005,6 +3021,33 @@ a.results-mini-ov__block:focus-visible {
 
   .results-mini-ov__hint {
     display: none;
+  }
+
+  .results-topbar__right {
+    display: none;
+  }
+
+  .results-actions-bar {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: stretch;
+  }
+
+  .results-actions-bar [data-share-community] {
+    margin-left: 0;
+  }
+
+  .results-actions-bar .results-action-summarize {
+    display: inline-flex;
+    justify-content: center;
+  }
+
+  .results-actions-bar .label-desktop {
+    display: none;
+  }
+
+  .results-actions-bar .label-mobile {
+    display: inline;
   }
 
   .test-map-shell {
