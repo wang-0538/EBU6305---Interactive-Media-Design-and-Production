@@ -28,6 +28,16 @@ body.test-module {
   --test-locked-fill: linear-gradient(160deg, #dbe4f0, #f3f6fb);
 }
 
+body.test-module .site-header {
+  --text-base: 1rem;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 2rem;
+}
+
 main.page-test {
   max-width: var(--content-max);
   width: min(var(--content-max), calc(100% - 2 * var(--page-gutter)));
