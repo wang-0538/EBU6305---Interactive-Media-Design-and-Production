@@ -192,6 +192,8 @@
   var rootEl = document.querySelector("[data-test-root]");
   /** Transient UI while quiz page is active: { kind: "hint" } | { kind: "exit", exitHref: string } */
   var quizDialog = null;
+  /** setInterval id for live Time / Score labels on the quiz page */
+  var quizLiveTimerId = null;
   /* Solo-practice workbench state (transient, also reflected in URL ?solo=type:id) */
   var soloState = null; // { type, itemId, draft, submitted, isCorrect, filterSheet? }
   var IC = {
@@ -216,7 +218,8 @@
     weakTitle: '<svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><circle cx="12" cy="12" r="8.5" fill="none" stroke="#14b8a6" stroke-width="1.9"/><circle cx="12" cy="12" r="4.8" fill="none" stroke="#14b8a6" stroke-width="1.9"/><circle cx="12" cy="12" r="2.1" fill="#14b8a6"/></svg>',
     correctStat: '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="#16a34a"/><path fill="none" stroke="#fff" stroke-width="2.35" stroke-linecap="round" stroke-linejoin="round" d="M7.2 12.5l2.9 2.9 6.7-6.7"/></svg>',
     wrongStat: '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="#dc2626"/><path fill="none" stroke="#fff" stroke-width="2.35" stroke-linecap="round" d="M8.6 8.6l6.8 6.8M15.4 8.6l-6.8 6.8"/></svg>',
-    scoreStat: '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="#6d28d9"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94.63 1.5 1.98 2.63 3.61 2.96V19H9v2h6v-2h-2v-2.1c1.63-.33 2.98-1.46 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v2.83C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z"/></svg>'
+    scoreStat: '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="#6d28d9"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94.63 1.5 1.98 2.63 3.61 2.96V19H9v2h6v-2h-2v-2.1c1.63-.33 2.98-1.46 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v2.83C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z"/></svg>',
+    timeClock: '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.2 3.1.8-1.3-4.5-2.7V7z"/></svg>'
   };
 
   if (!mainEl || !rootEl) return;
@@ -715,6 +718,8 @@
   function bindEvents() {
     rootEl.addEventListener("click", handleClick);
     rootEl.addEventListener("change", handleChange);
+    document.addEventListener("visibilitychange", handleDocumentVisibilityChange);
+    window.addEventListener("pagehide", handlePageHide);
   }
 
   function handleClick(event) {
@@ -788,6 +793,7 @@
         }
         if (quizDialog.kind === "exit" && quizDialog.exitHref) {
           var go = quizDialog.exitHref;
+          pauseActiveQuizTimer();
           quizDialog = null;
           window.location.href = go;
           return;
@@ -990,8 +996,10 @@
   function renderPage() {
     try {
       var page = mainEl.getAttribute("data-test-page");
+      if (page !== "quiz") stopQuizLiveTimer();
       if (page !== "map") setTestMapDockOpenOnBody(false);
       if (page !== "quiz") quizDialog = null;
+      if (page !== "quiz") pauseActiveQuizTimer();
       if (page === "map") return renderMapPage();
       if (page === "quiz") return renderQuizPage();
       if (page === "results") return renderResultsPage();
@@ -1347,6 +1355,7 @@
   }
 
   function renderQuizPage() {
+    stopQuizLiveTimer();
     var session = ensureQuizSession();
     if (!session) {
       quizDialog = null;
@@ -1414,6 +1423,9 @@
               renderHintBlock(question, session) +
             '</section>' +
             (currentResult ? renderFeedback(question, currentResult) : "") +
+            '<div class="quiz-workspace-live-strip" aria-label="Time and score">' +
+              renderQuizLiveTimeScoreRow(session) +
+            "</div>" +
             '<div class="quiz-workspace-nav">' +
               renderQuizNavButton(IC.prev + ' Previous', "prev", session.currentIndex === 0, "is-prev") +
               renderQuizNavButton(IC.hint + ' Hint', "hint", !!currentResult, "is-hint") +
@@ -1429,6 +1441,7 @@
         "</div>" +
       "</div>" +
       renderQuizDialog();
+    startQuizLiveTimerIfNeeded();
   }
 
   function escapeAttr(value) {
@@ -1576,6 +1589,32 @@
     }
   }
 
+  function renderQuizLiveTimeScoreRow(session) {
+    var timeText = formatElapsedDuration(getQuizElapsedMs(session));
+    return (
+      '<div class="quiz-sidecard__statgrid quiz-sidecard__statgrid--timescore">' +
+        '<div class="quiz-sidecard__stat is-time">' +
+          '<span class="quiz-sidecard__stat-ic quiz-sidecard__stat-ic--time" aria-hidden="true">' +
+          IC.timeClock +
+          "</span>" +
+          '<span class="quiz-sidecard__stat-name">Time</span>' +
+          '<strong class="quiz-sidecard__stat-val"><span data-quiz-live-time>' +
+          timeText +
+          "</span></strong>" +
+        "</div>" +
+        '<div class="quiz-sidecard__stat is-score">' +
+          '<span class="quiz-sidecard__stat-ic" aria-hidden="true">' +
+          IC.scoreStat +
+          "</span>" +
+          '<span class="quiz-sidecard__stat-name">Current Score</span>' +
+          '<strong class="quiz-sidecard__stat-val"><span data-quiz-live-score>' +
+          session.score +
+          "</span></strong>" +
+        "</div>" +
+      "</div>"
+    );
+  }
+
   function renderQuizOverviewPanel(session) {
     var answered = Object.keys(session.submitted).length;
 
@@ -1619,11 +1658,7 @@
           '<strong class="quiz-sidecard__stat-val">' + Math.max(Object.keys(session.submitted).length - session.correctCount, 0) + '</strong>' +
         '</div>' +
       '</div>' +
-      '<div class="quiz-sidecard__scorebox">' +
-        '<span class="quiz-sidecard__stat-ic" aria-hidden="true">' + IC.scoreStat + '</span>' +
-        '<span class="quiz-sidecard__stat-name">Current Score</span>' +
-        '<strong class="quiz-sidecard__stat-val">' + session.score + '</strong>' +
-      '</div>' +
+      renderQuizLiveTimeScoreRow(session) +
     '</section>';
   }
 
@@ -1763,7 +1798,7 @@
               renderResultStat("Score", result.score + " / " + result.maxScore) +
               renderResultStat("Accuracy", Math.round(result.accuracy * 100) + "%") +
               renderResultStat("Hints used", result.hintsUsed) +
-              renderResultStat("Best streak", result.bestStreak) +
+              renderResultStat("Time spent", formatElapsedDuration(getResultElapsedMs(result))) +
             '</div>' +
           '</div>' +
           '<div class="results-insights">' +
@@ -1783,9 +1818,16 @@
           renderLinkButton(
             "Reflect",
             buildUrl("test-quiz.html", { chapter: result.chapter, level: result.level, unit: result.unit, resultId: result.id, browse: "1" }),
-            "test-link-btn--soft results-action-summarize"
+            "test-link-btn--primary results-action-summarize"
           ) +
-          '<button type="button" class="test-link-btn test-link-btn--soft results-action-share" data-share-community="' + result.id + '"><span class="label-desktop">Share to Community</span><span class="label-mobile">Share</span></button>' +
+          '<button type="button" class="test-link-btn test-link-btn--primary results-action-share" data-share-community="' + result.id + '">' +
+            '<span class="results-action-share__icon" aria-hidden="true">' +
+              '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">' +
+                '<path d="M16 11c1.93 0 3.5-1.57 3.5-3.5S17.93 4 16 4s-3.5 1.57-3.5 3.5S14.07 11 16 11zm-8 0c1.93 0 3.5-1.57 3.5-3.5S9.93 4 8 4 4.5 5.57 4.5 7.5 6.07 11 8 11zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4zm8 0c-.29 0-.62.02-.97.05 1.33.96 2.47 2.25 2.47 3.95v2h6v-2c0-2.66-5.33-4-7.5-4z"/>' +
+              "</svg>" +
+            "</span>" +
+            '<span class="label-desktop">Share to Community</span><span class="label-mobile">Share</span>' +
+          "</button>" +
         '</div>' +
       '</div>';
 
@@ -1914,7 +1956,7 @@
             '<div class="mistakes-header__text">' +
               '<div class="test-kicker">Study Tools</div>' +
               '<h1 class="mistakes-title">Question Folder</h1>' +
-              '<p class="mistakes-subtitle">Review missed questions and bookmarked items.</p>' +
+              '<p class="mistakes-subtitle">Review missed and bookmarked questions.</p>' +
             '</div>' +
           '</div>' +
           tabsHtml +
@@ -1968,6 +2010,9 @@
     state.selection.level = levelId;
 
     if (params.fresh !== "1" && state.currentQuiz && state.currentQuiz.baseSignature === baseSignature) {
+      ensureQuizTimerState(state.currentQuiz);
+      normalizeQuizTimerForMode(state.currentQuiz);
+      if (shouldRunQuizTimer(state.currentQuiz)) resumeQuizTimer(state.currentQuiz);
       if (state.currentQuiz.browseOnly && params.browse === "1") {
         var qSync = parseInt(params.q, 10);
         if (!isNaN(qSync) && qSync >= 0 && qSync < state.currentQuiz.questions.length && qSync !== state.currentQuiz.currentIndex) {
@@ -2037,6 +2082,8 @@
       correctInit = typeof browseResult.correctCount === "number" ? browseResult.correctCount : 0;
     }
 
+    var runLiveTimer = !isBrowseReplay && mode !== "review";
+
     state.currentQuiz = {
       baseSignature: baseSignature,
       chapterId: chapterId,
@@ -2052,9 +2099,12 @@
       correctCount: isBrowseReplay && browseResult ? correctInit : 0,
       currentStreak: 0,
       bestStreak: isBrowseReplay && browseResult && typeof browseResult.bestStreak === "number" ? browseResult.bestStreak : 0,
+      elapsedMs: isBrowseReplay && browseResult ? getResultElapsedMs(browseResult) : 0,
+      timerActiveSince: runLiveTimer ? Date.now() : null,
       browseOnly: !!(isBrowseReplay && browseResult),
       reviewResultId: isBrowseReplay && browseResult ? browseResult.id : ""
     };
+    normalizeQuizTimerForMode(state.currentQuiz);
     saveState();
     if (state.currentQuiz && state.currentQuiz.browseOnly) {
       syncBrowseReplayQueryUrl(state.currentQuiz);
@@ -2233,6 +2283,7 @@
   function finalizeQuiz() {
     var quiz = state.currentQuiz;
     if (!quiz || quiz.browseOnly) return;
+    pauseQuizTimer(quiz);
     var result = buildResult(quiz);
     state.history.unshift(result);
     state.history = state.history.slice(0, 20);
@@ -2282,6 +2333,7 @@
       starsEarned: Math.max(1, Math.round(accuracy * 3)),
       badgeAwarded: null,
       bestStreak: quiz.bestStreak,
+      elapsedMs: getQuizElapsedMs(quiz),
       questionResults: quiz.questions.map(function (q) {
         var sub = quiz.submitted[q.id] || null;
         return { id: q.id, isCorrect: sub ? sub.isCorrect : null, selected: sub ? sub.selected : null, questionSnapshot: clone(q) };
@@ -3450,6 +3502,101 @@
   function formatDate(value) { try { return value ? new Date(value).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "Not yet"; } catch (e) { return value; } }
   function unique(items) { return items.filter(function (item, index) { return item && items.indexOf(item) === index; }); }
   function formatDateTime(value) { try { if (!value) return ""; var d = new Date(value); return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) + " " + d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }); } catch (e) { return value || ""; } }
+  function shouldRunQuizTimer(quiz) {
+    return !!(quiz && !quiz.browseOnly && quiz.mode !== "review");
+  }
+  function normalizeQuizTimerForMode(quiz) {
+    if (!quiz) return;
+    ensureQuizTimerState(quiz);
+    if (!shouldRunQuizTimer(quiz)) quiz.timerActiveSince = null;
+  }
+  function stopQuizLiveTimer() {
+    if (quizLiveTimerId) {
+      clearInterval(quizLiveTimerId);
+      quizLiveTimerId = null;
+    }
+  }
+  function syncQuizLiveDisplays() {
+    var q = state.currentQuiz;
+    if (!q || !rootEl || mainEl.getAttribute("data-test-page") !== "quiz") return;
+    var timeText = formatElapsedDuration(getQuizElapsedMs(q));
+    var scoreText = String(q.score);
+    var ti;
+    var timeNodes = rootEl.querySelectorAll("[data-quiz-live-time]");
+    for (ti = 0; ti < timeNodes.length; ti++) timeNodes[ti].textContent = timeText;
+    var si;
+    var scoreNodes = rootEl.querySelectorAll("[data-quiz-live-score]");
+    for (si = 0; si < scoreNodes.length; si++) scoreNodes[si].textContent = scoreText;
+  }
+  function startQuizLiveTimerIfNeeded() {
+    stopQuizLiveTimer();
+    if (!rootEl || mainEl.getAttribute("data-test-page") !== "quiz") return;
+    var q = state.currentQuiz;
+    syncQuizLiveDisplays();
+    if (!shouldRunQuizTimer(q)) return;
+    quizLiveTimerId = setInterval(syncQuizLiveDisplays, 500);
+  }
+  function ensureQuizTimerState(quiz) {
+    if (!quiz) return;
+    if (typeof quiz.elapsedMs !== "number" || quiz.elapsedMs < 0) quiz.elapsedMs = 0;
+    if (!Object.prototype.hasOwnProperty.call(quiz, "timerActiveSince")) quiz.timerActiveSince = null;
+  }
+  function getQuizElapsedMs(quiz) {
+    if (!quiz) return 0;
+    ensureQuizTimerState(quiz);
+    if (!shouldRunQuizTimer(quiz)) return Math.max(0, Math.round(quiz.elapsedMs));
+    if (!quiz.timerActiveSince) return Math.max(0, Math.round(quiz.elapsedMs));
+    return Math.max(0, Math.round(quiz.elapsedMs + Math.max(0, Date.now() - Number(quiz.timerActiveSince))));
+  }
+  function pauseQuizTimer(quiz) {
+    if (!quiz || !shouldRunQuizTimer(quiz)) return;
+    ensureQuizTimerState(quiz);
+    if (!quiz.timerActiveSince) return;
+    quiz.elapsedMs = getQuizElapsedMs(quiz);
+    quiz.timerActiveSince = null;
+    saveState();
+  }
+  function resumeQuizTimer(quiz) {
+    if (!quiz || !shouldRunQuizTimer(quiz)) return;
+    ensureQuizTimerState(quiz);
+    if (quiz.timerActiveSince) return;
+    quiz.timerActiveSince = Date.now();
+    saveState();
+  }
+  function pauseActiveQuizTimer() {
+    if (!state || !state.currentQuiz) return;
+    pauseQuizTimer(state.currentQuiz);
+  }
+  function getResultElapsedMs(result) {
+    return result && typeof result.elapsedMs === "number" && result.elapsedMs > 0 ? result.elapsedMs : 0;
+  }
+  function formatElapsedDuration(ms) {
+    var totalSeconds = Math.max(0, Math.floor(Number(ms || 0) / 1000));
+    if (totalSeconds >= 3600) {
+      var hours = Math.floor(totalSeconds / 3600);
+      var minutes = Math.floor((totalSeconds % 3600) / 60);
+      return String(hours) + "h" + String(minutes).padStart(2, "0") + "min";
+    }
+    var mins = Math.floor(totalSeconds / 60);
+    var secs = totalSeconds % 60;
+    return String(mins).padStart(2, "0") + ":" + String(secs).padStart(2, "0");
+  }
+  function handleDocumentVisibilityChange() {
+    var quiz = state.currentQuiz;
+    if (!quiz || !shouldRunQuizTimer(quiz)) return;
+    if (document.hidden) {
+      pauseQuizTimer(quiz);
+      stopQuizLiveTimer();
+      syncQuizLiveDisplays();
+      return;
+    }
+    if (mainEl.getAttribute("data-test-page") === "quiz") {
+      resumeQuizTimer(quiz);
+      syncQuizLiveDisplays();
+      startQuizLiveTimerIfNeeded();
+    }
+  }
+  function handlePageHide() { pauseActiveQuizTimer(); }
   function buildBadgeName(chapterId) {
     return chapterId === "basics" ? "Contrast Keeper"
       : chapterId === "models" ? "Output Strategist"
