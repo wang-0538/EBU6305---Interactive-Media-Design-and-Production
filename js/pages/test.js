@@ -14,6 +14,7 @@
   var SFX_POOL_SIZE = 4;
   var sfxPoolMap = {};
   var sfxPoolCursor = {};
+  var sfxUnlocked = false;
   var EXTERNAL_QUESTION_BANK = window.CLWTestQuestionBank || null;
   var LEARN_SECTION_MAP = {
     basics: {
@@ -722,6 +723,9 @@
   function bindEvents() {
     rootEl.addEventListener("click", handleClick);
     rootEl.addEventListener("change", handleChange);
+    document.addEventListener("pointerdown", unlockSfxOnce, { once: true, passive: true });
+    document.addEventListener("touchstart", unlockSfxOnce, { once: true, passive: true });
+    document.addEventListener("click", unlockSfxOnce, { once: true });
     document.addEventListener("visibilitychange", handleDocumentVisibilityChange);
     window.addEventListener("pagehide", handlePageHide);
   }
@@ -2968,6 +2972,24 @@
     var audio = pool[cursor % pool.length];
     sfxPoolCursor[src] = (cursor + 1) % pool.length;
     return audio;
+  }
+  function unlockSfxOnce() {
+    if (sfxUnlocked) return;
+    sfxUnlocked = true;
+    try {
+      var a = getPooledSfxAudio(SFX_HINT) || new Audio(SFX_HINT);
+      a.volume = 0;
+      try { a.currentTime = 0; } catch (resetError) {}
+      var p = a.play();
+      if (p && typeof p.then === "function") {
+        p.then(function () {
+          try {
+            a.pause();
+            a.currentTime = 0;
+          } catch (e) {}
+        }).catch(function () {});
+      }
+    } catch (e) {}
   }
   function playSfx(src, opts) {
     try {
