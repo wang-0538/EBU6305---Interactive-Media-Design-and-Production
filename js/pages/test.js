@@ -1493,7 +1493,7 @@
 
     var backLabel = session.browseOnly ? "Back to summary" : "Leave quiz";
     var closeControl = session.browseOnly
-      ? '<a class="quiz-workspace-topbar__close" href="' + escapeAttr(closeHref) + '" aria-label="' + escapeAttr(backLabel) + '">' +
+      ? '<a class="quiz-workspace-topbar__close quiz-workspace-topbar__close--browse" href="' + escapeAttr(closeHref) + '" aria-label="' + escapeAttr(backLabel) + '">' +
           '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>' +
           '<span>Back to Summary</span>' +
         "</a>"
@@ -1775,8 +1775,17 @@
           '</div>' +
         '</div>' +
         '<div class="results-actions-bar">' +
-          renderLinkButton("Retry This Quiz", buildUrl("test-quiz.html", { chapter: result.chapter, level: result.level, unit: result.unit, fresh: "1" }), "test-link-btn--primary") +
-          '<button type="button" class="test-link-btn test-link-btn--soft" data-share-community="' + result.id + '">Share to Community</button>' +
+          renderLinkButton(
+            '<span class="label-desktop">Retry This Quiz</span><span class="label-mobile">Retry</span>',
+            buildUrl("test-quiz.html", { chapter: result.chapter, level: result.level, unit: result.unit, fresh: "1" }),
+            "test-link-btn--primary results-action-retry"
+          ) +
+          renderLinkButton(
+            "Reflect",
+            buildUrl("test-quiz.html", { chapter: result.chapter, level: result.level, unit: result.unit, resultId: result.id, browse: "1" }),
+            "test-link-btn--soft results-action-summarize"
+          ) +
+          '<button type="button" class="test-link-btn test-link-btn--soft results-action-share" data-share-community="' + result.id + '"><span class="label-desktop">Share to Community</span><span class="label-mobile">Share</span></button>' +
         '</div>' +
       '</div>';
 
