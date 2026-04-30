@@ -2,6 +2,8 @@
  * Layout: header, footer, grid, breadcrumb.
  */
 
+@import url("profile-settings-panel.css");
+
 /* Injection mount points: children lay out as if directly inside header/footer */
 #site-navbar,
 #site-footer {
@@ -42,65 +44,7 @@
   flex-shrink: 0;
 }
 
-/* Bridge so pointer can move from avatar to dropdown without closing */
-.user-menu.is-logged-in::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 100%;
-  height: 0.35rem;
-}
-
-.user-menu__dropdown {
-  position: absolute;
-  top: calc(100% + 0.25rem);
-  right: 0;
-  z-index: 120;
-  min-width: 7.5rem;
-  padding: var(--space-xs);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transform: translateY(-4px);
-  transition:
-    opacity 0.15s ease,
-    transform 0.15s ease,
-    visibility 0.15s;
-}
-
-.user-menu.is-logged-in:hover .user-menu__dropdown,
-.user-menu.is-logged-in:focus-within .user-menu__dropdown {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-  transform: translateY(0);
-}
-
-.user-menu__logout {
-  width: 100%;
-  margin: 0;
-  padding: 0.5rem 0.65rem;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--color-text);
-  font: inherit;
-  font-size: var(--text-sm);
-  text-align: left;
-  cursor: pointer;
-}
-
-.user-menu__logout:hover {
-  background: var(--color-bg);
-  color: #b91c1c;
-}
-
-/* User avatar placeholder (top-right; login later) */
+/* User avatar (top-right; Profile & Settings panel) */
 .user-menu-trigger {
   flex-shrink: 0;
   display: grid;

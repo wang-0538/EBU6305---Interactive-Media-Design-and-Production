@@ -11,10 +11,6 @@
   var SFX_HINT = SFX_BASE + "hint.mp3";
   var SFX_CORRECT = SFX_BASE + "correct_answer.mp3";
   var SFX_WRONG = SFX_BASE + "wrong_answer.mp3";
-  var SFX_POOL_SIZE = 4;
-  var sfxPoolMap = {};
-  var sfxPoolCursor = {};
-  var sfxUnlocked = false;
   var EXTERNAL_QUESTION_BANK = window.CLWTestQuestionBank || null;
   var LEARN_SECTION_MAP = {
     basics: {
@@ -230,7 +226,9 @@
 
   syncSelectionFromQuery();
   applyChapterTheme(resolveChapterId());
-  initSfxPool();
+  if (window.CLWSound && typeof CLWSound.registerTracks === "function") {
+    CLWSound.registerTracks([SFX_STAR, SFX_CONFETTI, SFX_TADA, SFX_HINT, SFX_CORRECT, SFX_WRONG]);
+  }
   initSoloState();
   bindEvents();
   bindAuthStateSync();
@@ -685,6 +683,108 @@
     return auth && auth.getCurrentUsername ? auth.getCurrentUsername() : "";
   }
 
+  function drawWrappedCanvasText(ctx, text, x, y, maxWidth, lineHeight) {
+    var words = String(text || "").split(/\s+/);
+    var line = "";
+    for (var i = 0; i < words.length; i += 1) {
+      var testLine = line ? line + " " + words[i] : words[i];
+      if (ctx.measureText(testLine).width > maxWidth && line) {
+        ctx.fillText(line, x, y);
+        line = words[i];
+        y += lineHeight;
+      } else {
+        line = testLine;
+      }
+    }
+    if (line) ctx.fillText(line, x, y);
+    return y;
+  }
+
+  function drawRoundedRectPath(ctx, x, y, width, height, radius) {
+    var r = Math.min(radius, width / 2, height / 2);
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + width - r, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+    ctx.lineTo(x + width, y + height - r);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+    ctx.lineTo(x + r, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+  }
+
+  function buildResultShareImage(result) {
+    if (!result) return "";
+    var canvas = document.createElement("canvas");
+    canvas.width = 900;
+    canvas.height = 520;
+    var ctx = canvas.getContext("2d");
+    if (!ctx) return "";
+    var chapter = getChapter(result.chapter) || CHAPTERS[0];
+    var primary = chapter.colors && chapter.colors.primary ? chapter.colors.primary : "#2563eb";
+    var accent = chapter.colors && chapter.colors.secondary ? chapter.colors.secondary : "#f59e0b";
+    var accuracyPercent = Math.round(Number(result.accuracy || 0) * 100);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#f6f9ff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = primary;
+    ctx.fillRect(0, 0, canvas.width, 18);
+    ctx.fillStyle = accent;
+    ctx.fillRect(0, 18, canvas.width * Math.max(0.04, accuracyPercent / 100), 10);
+
+    ctx.fillStyle = "#0f172a";
+    ctx.font = "700 44px sans-serif";
+    ctx.fillText("Color Learning Test Result", 56, 88);
+    ctx.font = "600 25px sans-serif";
+    ctx.fillStyle = "#334155";
+    drawWrappedCanvasText(ctx, result.chapterName + " - " + result.levelName, 56, 132, 720, 32);
+
+    ctx.fillStyle = "#ffffff";
+    ctx.strokeStyle = "#dbe7f7";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    drawRoundedRectPath(ctx, 56, 174, 788, 210, 24);
+    ctx.fill();
+    ctx.stroke();
+
+    var stats = [
+      { label: "Score", value: result.score + " / " + result.maxScore },
+      { label: "Accuracy", value: accuracyPercent === 0 ? "00%" : accuracyPercent + "%" },
+      { label: "Correct", value: result.correctCount + " / " + result.totalQuestions }
+    ];
+    stats.forEach(function (item, index) {
+      var left = 92 + index * 250;
+      ctx.fillStyle = index === 1 && accuracyPercent === 0 ? "#be123c" : primary;
+      ctx.font = "800 46px sans-serif";
+      ctx.fillText(item.value, left, 262);
+      ctx.fillStyle = "#64748b";
+      ctx.font = "700 20px sans-serif";
+      ctx.fillText(item.label, left, 302);
+    });
+
+    if (accuracyPercent === 0) {
+      ctx.fillStyle = "#fff1f2";
+      ctx.strokeStyle = "#fecaca";
+      ctx.beginPath();
+      drawRoundedRectPath(ctx, 92, 330, 284, 38, 19);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#9f1239";
+      ctx.font = "800 18px sans-serif";
+      ctx.fillText("Needs full review", 116, 355);
+    }
+
+    ctx.fillStyle = "#334155";
+    ctx.font = "600 20px sans-serif";
+    var focus = result.reviewTopics && result.reviewTopics.length ? result.reviewTopics[0] : "Keep practicing this unit.";
+    drawWrappedCanvasText(ctx, "Next focus: " + focus, 56, 438, 788, 30);
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "600 16px sans-serif";
+    ctx.fillText("Shared from Test", 56, 482);
+    return canvas.toDataURL("image/png");
+  }
+
   function shareResultToCommunity(resultId) {
     if (!resultId) return;
     var result = null;
@@ -696,18 +796,23 @@
     }
     if (!result) return;
     var accuracyPercent = Math.round(Number(result.accuracy || 0) * 100);
+    var imageDataUrl = buildResultShareImage(result);
     var draft = {
       content: "Reflection from Test: I scored " + result.score + "/" + result.maxScore + " in " + result.chapterName + " (" + result.levelName + "). My next focus is " + (result.reviewTopics && result.reviewTopics.length ? result.reviewTopics[0] : "reviewing weak topics") + ".",
       tag: "#Theory",
       colorHex: "#2b78e4",
-      paletteHexes: ["#2b78e4", "#60a5fa", "#0f172a"],
+      paletteHexes: [],
+      includePalette: false,
+      includeImage: !!imageDataUrl,
+      imageDataUrl: imageDataUrl,
       origin: "test",
       originMeta: {
         chapter: result.chapterName,
         level: result.levelName,
         score: Number(result.score || 0),
         maxScore: Number(result.maxScore || 0),
-        accuracy: accuracyPercent
+        accuracy: accuracyPercent,
+        zeroAccuracy: accuracyPercent === 0
       },
       updatedAt: new Date().toISOString()
     };
@@ -723,9 +828,6 @@
   function bindEvents() {
     rootEl.addEventListener("click", handleClick);
     rootEl.addEventListener("change", handleChange);
-    document.addEventListener("pointerdown", unlockSfxOnce, { once: true, passive: true });
-    document.addEventListener("touchstart", unlockSfxOnce, { once: true, passive: true });
-    document.addEventListener("click", unlockSfxOnce, { once: true });
     document.addEventListener("visibilitychange", handleDocumentVisibilityChange);
     window.addEventListener("pagehide", handlePageHide);
   }
@@ -2945,74 +3047,10 @@
       : '<h2 class="results-card__title">' + title + "</h2>";
     return "<section class=\"results-card\">" + head + inner + "</section>";
   }
-  function initSfxPool() {
-    var tracks = [SFX_STAR, SFX_CONFETTI, SFX_TADA, SFX_HINT, SFX_CORRECT, SFX_WRONG];
-    var i;
-    var j;
-    for (i = 0; i < tracks.length; i++) {
-      var src = tracks[i];
-      var pool = [];
-      for (j = 0; j < SFX_POOL_SIZE; j++) {
-        try {
-          var a = new Audio(src);
-          a.preload = "auto";
-          pool.push(a);
-        } catch (e) {}
-      }
-      if (pool.length) {
-        sfxPoolMap[src] = pool;
-        sfxPoolCursor[src] = 0;
-      }
-    }
-  }
-  function getPooledSfxAudio(src) {
-    var pool = sfxPoolMap[src];
-    if (!pool || !pool.length) return null;
-    var cursor = Number(sfxPoolCursor[src]) || 0;
-    var audio = pool[cursor % pool.length];
-    sfxPoolCursor[src] = (cursor + 1) % pool.length;
-    return audio;
-  }
-  function unlockSfxOnce() {
-    if (sfxUnlocked) return;
-    sfxUnlocked = true;
-    try {
-      var a = getPooledSfxAudio(SFX_HINT) || new Audio(SFX_HINT);
-      a.volume = 0;
-      try { a.currentTime = 0; } catch (resetError) {}
-      var p = a.play();
-      if (p && typeof p.then === "function") {
-        p.then(function () {
-          try {
-            a.pause();
-            a.currentTime = 0;
-          } catch (e) {}
-        }).catch(function () {});
-      }
-    } catch (e) {}
-  }
   function playSfx(src, opts) {
-    try {
-      var conf = opts || {};
-      var layers = Math.max(1, Number(conf.layers) || 1);
-      var staggerMs = Math.max(0, Number(conf.staggerMs) || 0);
-      var baseVol = typeof conf.volume === "number" ? conf.volume : 1;
-      var i;
-      for (i = 0; i < layers; i++) {
-        (function (idx) {
-          setTimeout(function () {
-            try {
-              var a = getPooledSfxAudio(src);
-              if (!a) a = new Audio(src);
-              a.volume = Math.max(0, Math.min(1, baseVol));
-              try { a.currentTime = 0; } catch (resetError) {}
-              var p = a.play();
-              if (p && typeof p.catch === "function") p.catch(function () {});
-            } catch (e) {}
-          }, idx * staggerMs);
-        })(i);
-      }
-    } catch (e) {}
+    if (window.CLWSound && typeof CLWSound.play === "function") {
+      CLWSound.play(src, opts);
+    }
   }
 
   /* ── Confetti: coloured pieces fall from the top of the viewport ── */

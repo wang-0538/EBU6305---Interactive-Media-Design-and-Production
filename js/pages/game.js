@@ -151,6 +151,7 @@ const recentPalette=document.getElementById('recent-palette');
 const backBtn=document.getElementById('back-to-gallery');
 const resetBtn=document.getElementById('reset-drawing');
 const saveBtn=document.getElementById('save-image');
+const shareCommunityBtn=document.getElementById('share-community');
 const fillToolBtn=document.getElementById('tool-fill');
 const eraserToolBtn=document.getElementById('tool-eraser');
 const colorModelSelect=document.getElementById('color-model');
@@ -297,6 +298,7 @@ function hsvToRgb(h,s,v){const hh=((h%360)+360)%360,sat=s/100,val=v/100,c=val*sa
 function cmykToRgb(c,m,y,k){const cc=c/100,mm=m/100,yy=y/100,kk=k/100;return{r:Math.round(255*(1-cc)*(1-kk)),g:Math.round(255*(1-mm)*(1-kk)),b:Math.round(255*(1-yy)*(1-kk))};}
 function getCurrentRgb(){const model=colorModelSelect.value;if(model==='hsv')return hsvToRgb(Number(hsvInputs.h.value),Number(hsvInputs.s.value),Number(hsvInputs.v.value));if(model==='cmyk')return cmykToRgb(Number(cmykInputs.c.value),Number(cmykInputs.m.value),Number(cmykInputs.y.value),Number(cmykInputs.k.value));return{r:Number(rgbInputs.r.value),g:Number(rgbInputs.g.value),b:Number(rgbInputs.b.value)};}
 function rgbString({r,g,b}){return `rgb(${r}, ${g}, ${b})`;}
+function rgbToHex({r,g,b}){return`#${[r,g,b].map((v)=>Math.max(0,Math.min(255,Number(v)||0)).toString(16).padStart(2,'0')).join('')}`;}
 function colorsEqual(a,b){return a&&b&&a.r===b.r&&a.g===b.g&&a.b===b.b;}
 function applyRgbToInputs(color){if(!color)return;colorModelSelect.value='rgb';setVisibleModelGroup('rgb');rgbInputs.r.value=String(color.r);rgbInputs.rn.value=String(color.r);rgbInputs.g.value=String(color.g);rgbInputs.gn.value=String(color.g);rgbInputs.b.value=String(color.b);rgbInputs.bn.value=String(color.b);updateColorPreview();}
 function renderRecentPalette(){if(!recentPalette)return;recentPalette.innerHTML='';const list=recentColors.slice(0,5);for(let i=0;i<5;i++){const swatch=document.createElement('button');swatch.type='button';swatch.className='palette-swatch';swatch.setAttribute('aria-label',`Recent color ${i+1}`);if(list[i]){swatch.style.background=rgbString(list[i]);swatch.title=rgbString(list[i]);swatch.addEventListener('click',()=>applyRgbToInputs(list[i]));}else{swatch.style.background='#fff';swatch.disabled=true;}recentPalette.appendChild(swatch);}}
@@ -319,7 +321,30 @@ function toCanvasCoords(event){const rect=editorCanvas.getBoundingClientRect(),s
 function bindEditorCanvas(){editorCanvas.addEventListener('click',(event)=>{const {x,y}=toCanvasCoords(event);if(activeTool==='eraser'){floodFill(x,y,[255,255,255]);return;}const {r,g,b}=getCurrentRgb();floodFill(x,y,[r,g,b]);});}
 function resetCurrentDrawing(){startEditorSession();drawEditor(activeDrawingIndex);setupChallengeRound();} 
 function saveCurrentCanvas(){const link=document.createElement('a');const safeName=drawings[activeDrawingIndex].name.toLowerCase();link.download=`${safeName}-painting.png`;link.href=editorCanvas.toDataURL('image/png');link.click();}
-function bindToolActions(){fillToolBtn.addEventListener('click',()=>setActiveTool('fill'));eraserToolBtn.addEventListener('click',()=>setActiveTool('eraser'));resetBtn.addEventListener('click',resetCurrentDrawing);saveBtn.addEventListener('click',saveCurrentCanvas);}
+function shareCanvasToCommunity(){
+const drawing=drawings[activeDrawingIndex];
+const palette=recentColors.length?recentColors.slice(0,6).map(rgbToHex):[rgbToHex(getCurrentRgb())];
+const draft={
+content:`Game artwork: I painted ${drawing.name} and want to discuss my color choices.`,
+tag:"#Palettes",
+colorHex:palette[0]||"#2b78e4",
+paletteHexes:palette,
+includePalette:true,
+includeImage:true,
+imageDataUrl:editorCanvas.toDataURL('image/png'),
+origin:"game",
+originMeta:{
+drawingName:drawing.name,
+mode:activeGameMode,
+fillProgress:fillProgressLabel?fillProgressLabel.textContent:""
+},
+updatedAt:new Date().toISOString()
+};
+try{localStorage.setItem("clw_community_draft_v1",JSON.stringify(draft));}catch(_error){return;}
+document.dispatchEvent(new CustomEvent("clw:community-draft-updated",{detail:{origin:"game",drawingName:drawing.name}}));
+window.location.href="community.html";
+}
+function bindToolActions(){fillToolBtn.addEventListener('click',()=>setActiveTool('fill'));eraserToolBtn.addEventListener('click',()=>setActiveTool('eraser'));resetBtn.addEventListener('click',resetCurrentDrawing);saveBtn.addEventListener('click',saveCurrentCanvas);if(shareCommunityBtn)shareCommunityBtn.addEventListener('click',shareCanvasToCommunity);}
 
 function bindColorAdjustTracking(){if(!editorControlsPanel)return;editorControlsPanel.addEventListener('input',(e)=>{if(editorView.hidden)return;const t=e.target;if(t.matches&&t.matches('input[type="range"], input[type="number"]')){colorAdjustCount++;updateColorAdjustDisplay();}});}
 function bindGameMode(){
