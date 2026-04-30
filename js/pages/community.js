@@ -338,6 +338,9 @@
       post && post.paletteHexes ? post.paletteHexes : [colorHex],
       colorHex
     );
+    var imageDataUrl = sanitizeImageDataUrl(post && post.imageDataUrl ? post.imageDataUrl : "");
+    var includePalette = post && typeof post.includePalette === "boolean" ? post.includePalette : true;
+    var includeImage = post && typeof post.includeImage === "boolean" ? post.includeImage : !!imageDataUrl;
     return {
       id: String(post && post.id ? post.id : createId()),
       author: String(post && post.author ? post.author : "Guest"),
@@ -345,7 +348,9 @@
       tag: String(post && post.tag ? post.tag : DEFAULT_TAG),
       colorHex: colorHex,
       paletteHexes: paletteHexes,
-      imageDataUrl: sanitizeImageDataUrl(post && post.imageDataUrl ? post.imageDataUrl : ""),
+      includePalette: includePalette,
+      includeImage: includeImage,
+      imageDataUrl: includeImage ? imageDataUrl : "",
       likes: Math.max(0, Number(post && post.likes ? post.likes : 0)),
       likedBy: Array.isArray(post && post.likedBy)
         ? Array.from(new Set(post.likedBy.map(function (item) { return typeof item === "string" ? item.trim() : ""; }).filter(Boolean)))
@@ -486,12 +491,15 @@
     var raw = readJSON(STORAGE.draft, null);
     if (!raw || typeof raw !== "object") return null;
     var colorHex = normalizeHex(raw.colorHex || DEFAULT_COLOR);
+    var imageDataUrl = sanitizeImageDataUrl(raw.imageDataUrl || "");
     return {
       content: String(raw.content || ""),
       tag: String(raw.tag || DEFAULT_TAG),
       colorHex: colorHex,
       paletteHexes: normalizePaletteList(raw.paletteHexes || [colorHex], colorHex),
-      imageDataUrl: sanitizeImageDataUrl(raw.imageDataUrl || ""),
+      includePalette: typeof raw.includePalette === "boolean" ? raw.includePalette : raw.origin !== "test",
+      includeImage: typeof raw.includeImage === "boolean" ? raw.includeImage : !!imageDataUrl,
+      imageDataUrl: imageDataUrl,
       origin: raw.origin ? String(raw.origin) : "",
       originMeta: raw.originMeta && typeof raw.originMeta === "object" ? raw.originMeta : {},
       updatedAt: raw.updatedAt || ""
@@ -508,6 +516,8 @@
       tag: String(draft.tag || DEFAULT_TAG),
       colorHex: normalizeHex(draft.colorHex || DEFAULT_COLOR),
       paletteHexes: normalizePaletteList(draft.paletteHexes || [draft.colorHex || DEFAULT_COLOR], draft.colorHex || DEFAULT_COLOR),
+      includePalette: typeof draft.includePalette === "boolean" ? draft.includePalette : true,
+      includeImage: typeof draft.includeImage === "boolean" ? draft.includeImage : !!draft.imageDataUrl,
       imageDataUrl: sanitizeImageDataUrl(draft.imageDataUrl || ""),
       origin: draft.origin ? String(draft.origin) : "community",
       originMeta: draft.originMeta && typeof draft.originMeta === "object" ? draft.originMeta : {},
@@ -674,6 +684,31 @@
     wrap.hidden = false;
   }
 
+  function getIncludePalette() {
+    var input = document.querySelector("[data-include-palette]");
+    return input ? !!input.checked : true;
+  }
+
+  function getIncludeImage() {
+    var input = document.querySelector("[data-include-image]");
+    return input ? !!input.checked : true;
+  }
+
+  function setComposerIncludeOptions(includePalette, includeImage) {
+    var paletteInput = document.querySelector("[data-include-palette]");
+    var imageInput = document.querySelector("[data-include-image]");
+    if (paletteInput) paletteInput.checked = includePalette !== false;
+    if (imageInput) imageInput.checked = includeImage !== false;
+    updateComposerAttachmentState();
+  }
+
+  function updateComposerAttachmentState() {
+    var paletteBuilder = document.querySelector("[data-palette-builder]");
+    var extras = document.querySelector(".composer-card__extras");
+    if (paletteBuilder) paletteBuilder.classList.toggle("is-disabled", !getIncludePalette());
+    if (extras) extras.classList.toggle("is-disabled", !getIncludeImage());
+  }
+
   function updateComposerState() {
     var button = document.querySelector(".btn-post");
     if (!button) return;
@@ -712,7 +747,9 @@
       var score = Number(post.originMeta.score || 0);
       var maxScore = Number(post.originMeta.maxScore || 0);
       var accuracy = Number(post.originMeta.accuracy || 0);
-      return '<div class="post-origin-meta"><strong>Test Result:</strong> ' + chapter + " · Score " + score + "/" + maxScore + " · Accuracy " + accuracy + "%</div>";
+      var accuracyText = post.originMeta.zeroAccuracy ? "00%" : accuracy + "%";
+      var zeroFlag = post.originMeta.zeroAccuracy ? '<span class="post-origin-meta__flag">00% accuracy</span>' : "";
+      return '<div class="post-origin-meta"><strong>Test Result:</strong> ' + chapter + " · Score " + score + "/" + maxScore + " · Accuracy " + accuracyText + zeroFlag + "</div>";
     }
     if (post.origin === "game" && post.originMeta.drawingName) {
       return '<div class="post-origin-meta"><strong>Game Artwork:</strong> ' + escapeHtml(String(post.originMeta.drawingName)) + "</div>";
@@ -721,6 +758,7 @@
   }
 
   function renderPaletteHtml(post) {
+    if (post && post.includePalette === false) return "";
     var palette = normalizePaletteList(post && post.paletteHexes ? post.paletteHexes : [post.colorHex], post.colorHex);
     return (
       '<div class="post-palette" role="list" aria-label="Post palette colors">' +
@@ -740,6 +778,7 @@
   }
 
   function renderImageHtml(post) {
+    if (post && post.includeImage === false) return "";
     var image = sanitizeImageDataUrl(post && post.imageDataUrl ? post.imageDataUrl : "");
     if (!image) return "";
     return (
@@ -925,14 +964,26 @@
 
     var weeklyRows = toSortedRows(getWeeklyPointsMap(), 6);
     var totalRows = toSortedRows(getTotalPointsMap(), 6);
+    var currentUser = getCurrentUsername();
+    function renderLeaderboardRows(rows, emptyText) {
+      if (!rows.length) {
+        return '<li class="leaderboard__item leaderboard__item--empty"><span class="leaderboard__rank">--</span><span class="leaderboard__name">' + emptyText + '</span><strong class="leaderboard__points">0 pts</strong></li>';
+      }
+      return rows.map(function (row, index) {
+        var rank = index + 1;
+        var isCurrent = currentUser && row.username === currentUser;
+        return (
+          '<li class="leaderboard__item leaderboard__item--rank-' + rank + (isCurrent ? ' is-current-user' : '') + '">' +
+            '<span class="leaderboard__rank" aria-label="Rank ' + rank + '">' + rank + '</span>' +
+            '<span class="leaderboard__name">' + escapeHtml(row.username) + '</span>' +
+            '<strong class="leaderboard__points">' + row.points + ' pts</strong>' +
+          '</li>'
+        );
+      }).join("");
+    }
 
-    weeklyEl.innerHTML = weeklyRows.length
-      ? weeklyRows.map(function (row) { return "<li><span>" + escapeHtml(row.username) + "</span><strong>" + row.points + " pts</strong></li>"; }).join("")
-      : "<li><span>No activity yet</span><strong>0 pts</strong></li>";
-
-    totalEl.innerHTML = totalRows.length
-      ? totalRows.map(function (row) { return "<li><span>" + escapeHtml(row.username) + "</span><strong>" + row.points + " pts</strong></li>"; }).join("")
-      : "<li><span>No users yet</span><strong>0 pts</strong></li>";
+    weeklyEl.innerHTML = renderLeaderboardRows(weeklyRows, "No activity yet");
+    totalEl.innerHTML = renderLeaderboardRows(totalRows, "No users yet");
 
     renderStats(weeklyRows);
   }
@@ -941,6 +992,7 @@
     renderPosts();
     renderLeaderboards();
     updateComposerState();
+    updateComposerAttachmentState();
     updateCharCounter();
   }
 
@@ -997,6 +1049,8 @@
       tag: state.selectedTag,
       colorHex: colorPicker.value,
       paletteHexes: paletteHexes,
+      includePalette: getIncludePalette(),
+      includeImage: getIncludeImage(),
       imageDataUrl: existing && existing.imageDataUrl ? existing.imageDataUrl : "",
       origin: keepImported ? existing.origin : "community",
       originMeta: keepImported ? (existing.originMeta || {}) : {}
@@ -1013,12 +1067,13 @@
     if (hasMeaningfulDraft) setComposerPalette(draft.paletteHexes || [draft.colorHex], false);
     else setComposerPalette([normalizeHex(draft.colorHex || DEFAULT_COLOR)], false);
     setComposerImagePreview(draft.imageDataUrl || "");
+    setComposerIncludeOptions(draft.includePalette, draft.includeImage);
     setActiveTag(draft.tag || DEFAULT_TAG);
     updateDraftOriginLabel(draft);
     updateCharCounter();
   }
 
-  function buildPostFromForm(text, colorHex, paletteHexes, imageDataUrl) {
+  function buildPostFromForm(text, colorHex, paletteHexes, imageDataUrl, includePalette, includeImage) {
     var draft = readDraft();
     var origin = draft && draft.origin ? draft.origin : "community";
     var originMeta = draft && draft.originMeta ? draft.originMeta : {};
@@ -1029,7 +1084,9 @@
       tag: state.selectedTag,
       colorHex: colorHex,
       paletteHexes: paletteHexes,
-      imageDataUrl: imageDataUrl,
+      includePalette: includePalette,
+      includeImage: includeImage,
+      imageDataUrl: includeImage ? imageDataUrl : "",
       likes: 0,
       likedBy: [],
       pointsAwarded: POINTS_PER_POST,
@@ -1066,8 +1123,10 @@
     var colorHex = normalizeHex(colorPicker.value);
     var paletteHexes = parsePaletteInput(paletteInput.value, colorHex);
     var draft = readDraft();
-    var imageDataUrl = draft && draft.imageDataUrl ? sanitizeImageDataUrl(draft.imageDataUrl) : "";
-    var post = buildPostFromForm(text, colorHex, paletteHexes, imageDataUrl);
+    var includePalette = getIncludePalette();
+    var includeImage = getIncludeImage();
+    var imageDataUrl = includeImage && draft && draft.imageDataUrl ? sanitizeImageDataUrl(draft.imageDataUrl) : "";
+    var post = buildPostFromForm(text, colorHex, paletteHexes, imageDataUrl, includePalette, includeImage);
     state.posts.unshift(post);
     writePosts(state.posts);
     writeDraft(null);
@@ -1086,6 +1145,7 @@
 
     input.value = "";
     setComposerPalette([DEFAULT_COLOR], false);
+    setComposerIncludeOptions(true, true);
     var imageInput = form.querySelector("[data-image-input]");
     if (imageInput) imageInput.value = "";
     setComposerImagePreview("");
@@ -1284,6 +1344,8 @@
     var imageClearBtn = document.querySelector("[data-image-clear]");
     var paletteRow = document.querySelector("[data-palette-row]");
     var paletteFromImageBtn = document.querySelector("[data-palette-from-image]");
+    var includePaletteInput = document.querySelector("[data-include-palette]");
+    var includeImageInput = document.querySelector("[data-include-image]");
 
     if (colorPicker) {
       colorPicker.addEventListener("input", function () {
@@ -1307,6 +1369,18 @@
     if (contentInput) {
       contentInput.addEventListener("input", function () {
         updateCharCounter();
+        persistComposerDraft();
+      });
+    }
+    if (includePaletteInput) {
+      includePaletteInput.addEventListener("change", function () {
+        updateComposerAttachmentState();
+        persistComposerDraft();
+      });
+    }
+    if (includeImageInput) {
+      includeImageInput.addEventListener("change", function () {
+        updateComposerAttachmentState();
         persistComposerDraft();
       });
     }
@@ -1386,10 +1460,13 @@
             tag: state.selectedTag,
             colorHex: document.querySelector("[data-color-picker]") ? document.querySelector("[data-color-picker]").value : DEFAULT_COLOR,
             paletteHexes: parsePaletteInput(document.querySelector("[data-palette-input]") ? document.querySelector("[data-palette-input]").value : "", DEFAULT_COLOR),
+            includePalette: getIncludePalette(),
+            includeImage: true,
             imageDataUrl: dataUrl,
             origin: draft.origin || "community",
             originMeta: draft.originMeta || {}
           });
+          setComposerIncludeOptions(getIncludePalette(), true);
           setComposerImagePreview(dataUrl);
           setFeedback("Image attached to your post.", "success");
         };
@@ -1405,6 +1482,8 @@
           tag: state.selectedTag,
           colorHex: document.querySelector("[data-color-picker]") ? document.querySelector("[data-color-picker]").value : DEFAULT_COLOR,
           paletteHexes: parsePaletteInput(document.querySelector("[data-palette-input]") ? document.querySelector("[data-palette-input]").value : "", DEFAULT_COLOR),
+          includePalette: getIncludePalette(),
+          includeImage: getIncludeImage(),
           imageDataUrl: "",
           origin: draft.origin || "community",
           originMeta: draft.originMeta || {}
@@ -1489,6 +1568,7 @@
     setActiveTag(DEFAULT_TAG);
     setFilter(DEFAULT_FILTER);
     setComposerPalette([DEFAULT_COLOR], false);
+    setComposerIncludeOptions(true, true);
     bindEvents();
     applyDraftToComposer();
     refreshAll();

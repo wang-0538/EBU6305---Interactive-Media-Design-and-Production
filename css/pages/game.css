@@ -388,6 +388,17 @@
   color: #d94893;
 }
 
+.tool-btn--community {
+  border-color: #2563eb;
+  color: #1d4ed8;
+}
+
+.tool-btn--community:hover {
+  background: #eff6ff;
+  border-color: #1d4ed8;
+  color: #1e40af;
+}
+
 .tool-row .tool-btn .btn-icon svg {
   width: 35px;
   height: 35px;

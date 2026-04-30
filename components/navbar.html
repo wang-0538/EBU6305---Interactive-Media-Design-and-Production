@@ -16,17 +16,16 @@
       <button
         type="button"
         class="user-menu-trigger"
-        aria-label="Account"
-        title="Log in"
+        aria-label="Open Profile and Settings"
+        title="Profile &amp; Settings"
         data-auth-trigger
-        aria-haspopup="true"
+        data-profile-settings-trigger
+        aria-haspopup="dialog"
         aria-expanded="false"
+        aria-controls="profile-settings-dialog"
       >
         <span class="user-avatar user-avatar--placeholder" data-user-avatar aria-hidden="true"></span>
       </button>
-      <div class="user-menu__dropdown" data-user-dropdown hidden>
-        <button type="button" class="user-menu__logout" data-auth-logout>Log out</button>
-      </div>
     </div>
   </div>
 </div>

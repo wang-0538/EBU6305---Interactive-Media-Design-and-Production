@@ -6,6 +6,8 @@
   "use strict";
 
   var STORAGE_KEY = "clw_theme_id";
+  var AUTH_USER_KEY = "clw_current_user";
+  var GUEST_SESSION_THEME_KEY = "clw_guest_session_theme_id";
 
   /**
    * @typedef {{ id: string, swatch: string, stops: string[], primaryHover: string }} ThemeGroup
@@ -31,9 +33,9 @@
     },
     pastel: {
       id: "pastel",
-      swatch: "#bbd0ff",
-      stops: ["#bbd0ff", "#b8c0ff", "#c8b6ff", "#e7c6ff", "#ffd6ff"],
-      primaryHover: "#9fabe8"
+      swatch: "#957fef",
+      stops: ["#7a63db", "#886fe8", "#957fef", "#b7a7f7", "#d9d1fd"],
+      primaryHover: "#6d58c8"
     },
     amber: {
       id: "amber",
@@ -44,6 +46,17 @@
   };
 
   var currentId = "blue";
+
+  function hasLoggedInUser() {
+    try {
+      var raw = localStorage.getItem(AUTH_USER_KEY);
+      if (!raw) return false;
+      var parsed = JSON.parse(raw);
+      return !!(parsed && typeof parsed.username === "string" && parsed.username.trim());
+    } catch (e) {
+      return false;
+    }
+  }
 
   function normalizeHex(hex) {
     return hex.trim().toLowerCase();
@@ -64,6 +77,24 @@
     return "";
   }
 
+  function readGuestSessionThemeId() {
+    try {
+      var raw = sessionStorage.getItem(GUEST_SESSION_THEME_KEY);
+      if (raw && THEME_REGISTRY[raw]) return raw;
+    } catch (e) {
+      /* ignore */
+    }
+    return "";
+  }
+
+  function writeGuestSessionThemeId(themeId) {
+    try {
+      sessionStorage.setItem(GUEST_SESSION_THEME_KEY, themeId);
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
   function applyTheme(themeId) {
     var id = resolveThemeId(themeId);
     var t = THEME_REGISTRY[id];
@@ -75,10 +106,14 @@
     root.style.setProperty("--theme-stop-4", normalizeHex(t.stops[3]));
     root.style.setProperty("--theme-stop-5", normalizeHex(t.stops[4]));
     root.style.setProperty("--color-primary-hover", normalizeHex(t.primaryHover));
-    try {
-      localStorage.setItem(STORAGE_KEY, id);
-    } catch (err) {
-      /* ignore */
+    if (hasLoggedInUser()) {
+      try {
+        localStorage.setItem(STORAGE_KEY, id);
+      } catch (err) {
+        /* ignore */
+      }
+    } else {
+      writeGuestSessionThemeId(id);
     }
   }
 
@@ -93,7 +128,7 @@
     return nextId;
   }
 
-  var storedThemeId = readStoredThemeId();
+  var storedThemeId = hasLoggedInUser() ? readStoredThemeId() : readGuestSessionThemeId();
   currentId = storedThemeId || pickRandomThemeId();
   applyTheme(currentId);
 

@@ -57,6 +57,10 @@
 
               <div class="composer-card__controls">
                 <div class="palette-builder" data-palette-builder>
+                  <label class="composer-toggle">
+                    <input type="checkbox" data-include-palette checked />
+                    <span>Publish palette</span>
+                  </label>
                   <div class="palette-builder__row" data-palette-row></div>
                   <div class="palette-builder__actions">
                     <button type="button" class="palette-builder__extract" data-palette-from-image>Extract Palette from Image</button>
@@ -67,14 +71,21 @@
                 </div>
               </div>
               <div class="composer-card__extras">
-                <label class="color-control" for="attach-image">
-                  <span>Attach Image (from game or upload)</span>
+                <label class="composer-toggle">
+                  <input type="checkbox" data-include-image checked />
+                  <span>Publish image</span>
+                </label>
+                <label class="composer-upload" for="attach-image">
+                  <span class="composer-upload__title">Attach Image</span>
+                  <span class="composer-upload__hint">From game share or local upload</span>
                   <input id="attach-image" type="file" accept="image/*" data-image-input />
                 </label>
               </div>
               <div class="composer-card__image-preview" data-image-preview-wrap hidden>
                 <img src="" alt="Selected post attachment preview" data-image-preview />
-                <button type="button" class="post-action-btn" data-image-clear>Remove image</button>
+                <div class="composer-card__image-actions">
+                  <button type="button" class="post-action-btn post-action-btn--danger" data-image-clear>Remove image</button>
+                </div>
               </div>
               <p class="composer-card__feedback sr-only" data-community-feedback role="status" aria-live="polite"></p>
             </form>
@@ -99,7 +110,7 @@
         </section>
 
         <aside class="community-side" aria-label="Community insights">
-          <section class="widget-card" aria-labelledby="progress-title">
+          <section class="widget-card widget-card--progress" aria-labelledby="progress-title">
             <h2 id="progress-title">My Learning Progress</h2>
             <div class="stats-grid">
               <p class="stats-grid__item">
@@ -116,13 +127,13 @@
             <p class="widget-card__note" data-rank-trend>Weekly rank change: --</p>
           </section>
 
-          <section class="widget-card" aria-labelledby="leaderboard-title">
+          <section class="widget-card widget-card--leaderboard" aria-labelledby="leaderboard-title">
             <h2 id="leaderboard-title">Weekly Top Learners (7 days)</h2>
             <ol class="leaderboard" data-weekly-leaderboard-list></ol>
-            <p class="widget-card__note">Weekly ranking uses `clw:activity-recorded` points from the last 7 days.</p>
+            <p class="widget-card__note">Ranked by points earned in the last 7 days.</p>
           </section>
 
-          <section class="widget-card" aria-labelledby="alltime-title">
+          <section class="widget-card widget-card--leaderboard widget-card--alltime" aria-labelledby="alltime-title">
             <h2 id="alltime-title">All-time Top Learners</h2>
             <ol class="leaderboard" data-total-leaderboard-list></ol>
           </section>
@@ -168,6 +179,8 @@
     <script src="js/main.js" defer></script>
     <script src="js/navbar.js" defer></script>
     <script src="js/auth.js" defer></script>
+    <script src="js/clw-sound.js" defer></script>
+    <script src="js/profile-settings-panel.js" defer></script>
     <script src="js/pages/community.js" defer></script>
   </body>
 </html>

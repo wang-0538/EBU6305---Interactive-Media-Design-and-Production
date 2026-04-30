@@ -10,6 +10,21 @@
   var HOME_TEST_PICK_INDEX_KEY = "clw_home_test_pick_index";
   var HOME_LEARN_PICK_INDEX_KEY = "clw_home_learn_pick_index";
   var HOME_COMMUNITY_PICK_INDEX_KEY = "clw_home_community_pick_index";
+  var AUTH_USER_KEY = "clw_current_user";
+  var HOME_COMMUNITY_ROTATE_MS = 6800;
+  var HOME_COMMUNITY_SWITCH_OUT_MS = 230;
+  var HOME_COMMUNITY_SWITCH_IN_MS = 320;
+
+  function isGuestUser() {
+    try {
+      var raw = localStorage.getItem(AUTH_USER_KEY);
+      if (!raw) return true;
+      var parsed = JSON.parse(raw);
+      return !(parsed && typeof parsed.username === "string" && parsed.username.trim());
+    } catch (e) {
+      return true;
+    }
+  }
 
   function syncThemeSelection(section) {
     if (!window.CLWTheme) return;
@@ -29,8 +44,9 @@
   }
 
   function readStoredValue(key, fallback) {
+    var guest = isGuestUser();
     try {
-      var value = localStorage.getItem(key);
+      var value = guest ? sessionStorage.getItem(key) : localStorage.getItem(key);
       return value || fallback;
     } catch (e) {
       return fallback;
@@ -38,8 +54,13 @@
   }
 
   function writeStoredValue(key, value) {
+    var guest = isGuestUser();
     try {
-      localStorage.setItem(key, value);
+      if (guest) {
+        sessionStorage.setItem(key, value);
+      } else {
+        localStorage.setItem(key, value);
+      }
     } catch (e) {
       /* ignore */
     }
@@ -240,6 +261,7 @@
   }
 
   function setupHomeCommunitySpotlight() {
+    var cardEl = document.querySelector(".home-card--community-spotlight");
     var noticeLinkEl = document.querySelector("[data-home-community-notice-link]");
     var postLinkEl = document.querySelector("[data-home-community-post-link]");
     var titleEl = document.querySelector("[data-home-community-title]");
@@ -247,29 +269,63 @@
     var authorEl = document.querySelector("[data-home-community-author]");
     var tagEl = document.querySelector("[data-home-community-tag]");
     var postEl = document.querySelector("[data-home-community-post]");
-    if (!noticeLinkEl || !postLinkEl || !titleEl || !avatarEl || !authorEl || !tagEl || !postEl) return;
+    var bubbleEl = postLinkEl ? postLinkEl.querySelector(".home-community__bubble") : null;
+    if (!cardEl || !noticeLinkEl || !postLinkEl || !titleEl || !avatarEl || !authorEl || !tagEl || !postEl || !bubbleEl) return;
+
+    function renderCommunityItem(item) {
+      if (!item) return;
+      var initial = item.author && item.author.charAt(0) ? item.author.charAt(0).toUpperCase() : "U";
+      avatarEl.textContent = initial;
+      authorEl.textContent = "@" + item.author;
+      tagEl.textContent = item.tag || "#Community";
+      postEl.textContent = item.content;
+      postLinkEl.setAttribute("aria-label", "Open community post list, highlighted from @" + item.author);
+    }
 
     titleEl.textContent = "👥 Join the Color Community";
     noticeLinkEl.href = "community.html";
+    postLinkEl.href = "community-posts.html";
+    var pauseRotation = false;
+    cardEl.addEventListener("pointerenter", function () {
+      pauseRotation = true;
+    });
+    cardEl.addEventListener("pointerleave", function () {
+      pauseRotation = false;
+    });
+
     loadCommunityPostCatalog()
       .then(function (catalog) {
         if (!Array.isArray(catalog) || !catalog.length) throw new Error("Empty community catalog");
-        var picked = catalog[pickStableSessionIndex(HOME_COMMUNITY_PICK_INDEX_KEY, catalog.length)];
+        var currentIndex = pickStableSessionIndex(HOME_COMMUNITY_PICK_INDEX_KEY, catalog.length);
+        var picked = catalog[currentIndex];
         if (!picked || !picked.content) throw new Error("Invalid community item");
-        var initial = picked.author && picked.author.charAt(0) ? picked.author.charAt(0).toUpperCase() : "U";
-        avatarEl.textContent = initial;
-        authorEl.textContent = "@" + picked.author;
-        tagEl.textContent = picked.tag || "#Community";
-        postEl.textContent = picked.content;
-        postLinkEl.href = "community-posts.html";
-        postLinkEl.setAttribute("aria-label", "Open community post list, highlighted from @" + picked.author);
+        renderCommunityItem(picked);
+
+        if (catalog.length < 2) return;
+        var switching = false;
+        window.setInterval(function () {
+          if (switching || document.hidden || pauseRotation) return;
+          switching = true;
+          bubbleEl.classList.remove("home-community__bubble--slide-in");
+          bubbleEl.classList.add("home-community__bubble--slide-out");
+          window.setTimeout(function () {
+            currentIndex = (currentIndex + 1) % catalog.length;
+            renderCommunityItem(catalog[currentIndex]);
+            bubbleEl.classList.remove("home-community__bubble--slide-out");
+            bubbleEl.classList.add("home-community__bubble--slide-in");
+            window.setTimeout(function () {
+              bubbleEl.classList.remove("home-community__bubble--slide-in");
+              switching = false;
+            }, HOME_COMMUNITY_SWITCH_IN_MS + 40);
+          }, HOME_COMMUNITY_SWITCH_OUT_MS);
+        }, HOME_COMMUNITY_ROTATE_MS);
       })
       .catch(function () {
-        avatarEl.textContent = "C";
-        authorEl.textContent = "@colorLearner";
-        tagEl.textContent = "#Community";
-        postEl.textContent = "Share one color insight, palette, or learning takeaway with peers in the community.";
-        postLinkEl.href = "community-posts.html";
+        renderCommunityItem({
+          author: "colorLearner",
+          tag: "#Community",
+          content: "Share one color insight, palette, or learning takeaway with peers in the community."
+        });
       });
   }
 
@@ -701,15 +757,23 @@
           "var catalog = [];",
           "CHAPTERS.forEach(function (chapter) {",
           "  levels.forEach(function (levelId) {",
+          "    var levelName = String(levelId || 'Level');",
+          "    levelName = levelName ? levelName.charAt(0).toUpperCase() + levelName.slice(1) : 'Level';",
           "    (UNIT_TEMPLATES[levelId] || []).forEach(function (unit) {",
           "      var unitId = unit.id;",
+          "      var unitNumber = Math.max(1, Number(String(unitId || '').split('-')[1]) || 1);",
+          "      var focusList = chapter && chapter.focuses ? chapter.focuses[levelId] : null;",
+          "      var unitFocusLabel = Array.isArray(focusList) && focusList[unitNumber - 1] ? String(focusList[unitNumber - 1]) : ('Unit ' + unitNumber);",
           "      var questions = getUnitQuestions(chapter.id, levelId, unitId) || [];",
           "      questions.forEach(function (question, qIndex) {",
           "        catalog.push({",
           "          chapterId: chapter.id,",
           "          chapterName: chapter.name,",
           "          levelId: levelId,",
+          "          levelName: levelName,",
           "          unitId: unitId,",
+          "          unitNumber: unitNumber,",
+          "          unitFocusLabel: unitFocusLabel,",
           "          questionIndex: qIndex,",
           "          prompt: question.prompt || '',",
           "          topic: question.topic || '',",
@@ -740,6 +804,184 @@
     return text.charAt(0).toUpperCase() + text.slice(1);
   }
 
+  function formatTestBreadcrumb(picked) {
+    if (!picked || !picked.chapterName) return "Test module";
+    var nodes = [
+      "Test",
+      String(picked.chapterName),
+      String(picked.levelName || toTitleCase(picked.levelId)),
+      "Unit " + String(picked.unitNumber || 1)
+    ];
+    if (picked.unitFocusLabel) nodes.push(String(picked.unitFocusLabel));
+    return nodes.join(" > ");
+  }
+
+  function parseCssPx(value) {
+    var num = Number.parseFloat(String(value || "0"));
+    return Number.isFinite(num) ? num : 0;
+  }
+
+  function computeAdaptiveOptionWidth(optionsEl) {
+    if (!optionsEl) return;
+    var optionEls = Array.from(optionsEl.querySelectorAll(".home-test__option"));
+    if (!optionEls.length) return;
+
+    var hostWidth = Math.floor(optionsEl.clientWidth);
+    if (!(hostWidth > 0)) return;
+    var narrowViewport = hostWidth < 360;
+    if (narrowViewport) {
+      optionsEl.style.setProperty("--home-test-option-width", "100%");
+      return;
+    }
+
+    var sampleOption = optionEls[0];
+    var sampleText = sampleOption.querySelector(".home-test__option-text") || sampleOption;
+    var optionStyle = window.getComputedStyle(sampleOption);
+    var textStyle = window.getComputedStyle(sampleText);
+    var rootStyle = window.getComputedStyle(document.documentElement);
+
+    var keySizeRem = parseCssPx(rootStyle.fontSize) * 1.4;
+    var horizontalPadding = parseCssPx(optionStyle.paddingLeft) + parseCssPx(optionStyle.paddingRight);
+    var gapSize = parseCssPx(optionStyle.columnGap || optionStyle.gap);
+    var keyAndSpacing = keySizeRem + gapSize + 14;
+
+    var canvas = document.createElement("canvas");
+    var ctx = canvas.getContext("2d");
+    var maxTextWidth = 0;
+    if (ctx) {
+      ctx.font = [
+        textStyle.fontStyle,
+        textStyle.fontVariant,
+        textStyle.fontWeight,
+        textStyle.fontSize + "/" + textStyle.lineHeight,
+        textStyle.fontFamily
+      ].join(" ");
+      optionEls.forEach(function (row) {
+        var label = row.querySelector(".home-test__option-text");
+        var text = (label ? label.textContent : row.textContent) || "";
+        maxTextWidth = Math.max(maxTextWidth, ctx.measureText(text.trim()).width);
+      });
+    } else {
+      optionEls.forEach(function (row) {
+        maxTextWidth = Math.max(maxTextWidth, ((row.textContent || "").trim().length * 8));
+      });
+    }
+
+    var desiredWidth = Math.ceil(maxTextWidth + keyAndSpacing + horizontalPadding);
+    var maxAllowed = Math.max(220, Math.floor(hostWidth * 0.96));
+    var pleasantCap = Math.floor(hostWidth * 0.84);
+    var target = Math.min(maxAllowed, Math.max(240, desiredWidth));
+    if (target < pleasantCap) target = Math.max(240, target);
+    else target = maxAllowed;
+
+    if (target >= hostWidth * 0.9) {
+      optionsEl.style.setProperty("--home-test-option-width", "100%");
+    } else {
+      optionsEl.style.setProperty("--home-test-option-width", target + "px");
+    }
+  }
+
+  function scheduleAdaptiveOptionWidth(optionsEl) {
+    if (!optionsEl) return;
+    if (typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(function () {
+        computeAdaptiveOptionWidth(optionsEl);
+      });
+      return;
+    }
+    setTimeout(function () {
+      computeAdaptiveOptionWidth(optionsEl);
+    }, 0);
+  }
+
+  function bindHomeTestOptionResize(optionsEl) {
+    if (!optionsEl || optionsEl.dataset.widthBound === "true") return;
+    optionsEl.dataset.widthBound = "true";
+    window.addEventListener("resize", function () {
+      scheduleAdaptiveOptionWidth(optionsEl);
+    });
+  }
+
+  function getHomeTestFallbackCatalog() {
+    return [
+      {
+        chapterId: "basics",
+        chapterName: "Foundations",
+        levelId: "easy",
+        levelName: "Easy",
+        unitId: "unit-1",
+        unitNumber: 1,
+        unitFocusLabel: "Overview & Core Concepts",
+        questionIndex: 0,
+        prompt: "Which pair is complementary on a simple color wheel?",
+        optionTexts: ["Blue and orange", "Blue and green", "Yellow and orange", "Red and purple"]
+      },
+      {
+        chapterId: "models",
+        chapterName: "Encoding Fundamentals",
+        levelId: "medium",
+        levelName: "Medium",
+        unitId: "unit-2",
+        unitNumber: 2,
+        unitFocusLabel: "ICC Profiles",
+        questionIndex: 0,
+        prompt: "Why is an ICC profile useful in a color workflow?",
+        optionTexts: [
+          "It maps color values between devices more consistently",
+          "It increases monitor brightness automatically",
+          "It removes the need for calibration",
+          "It converts every image to grayscale"
+        ]
+      },
+      {
+        chapterId: "meaning",
+        chapterName: "Advanced Display Technologies",
+        levelId: "hard",
+        levelName: "Hard",
+        unitId: "unit-3",
+        unitNumber: 3,
+        unitFocusLabel: "Wide Color Gamut",
+        questionIndex: 0,
+        prompt: "A wider color gamut display mainly allows what?",
+        optionTexts: [
+          "Showing more saturated and varied colors",
+          "Always reducing file size",
+          "Removing the need for tone mapping",
+          "Guaranteeing perfect print matching"
+        ]
+      }
+    ];
+  }
+
+  function renderHomeTestCard(linkEl, promptEl, optionsEl, metaEl, picked) {
+    if (!linkEl || !promptEl || !optionsEl || !metaEl || !picked) return;
+    promptEl.textContent = picked.prompt || "Tap to jump into a random color challenge question.";
+    var optionRows = Array.isArray(picked.optionTexts) ? picked.optionTexts.slice(0, 4) : [];
+    if (optionRows.length) {
+      optionsEl.innerHTML = optionRows
+        .map(function (text, index) {
+          return (
+            '<p class="home-test__option">' +
+            '<span class="home-test__option-key">' + String.fromCharCode(65 + (index % 26)) + "</span>" +
+            '<span class="home-test__option-text">' + escapeHtmlText(clipWithEllipsis(text, 72)) + "</span>" +
+            "</p>"
+          );
+        })
+        .join("");
+    } else {
+      optionsEl.innerHTML = '<p class="home-test__option"><span class="home-test__option-key">i</span><span class="home-test__option-text">Open to view options</span></p>';
+    }
+    metaEl.textContent = formatTestBreadcrumb(picked);
+    linkEl.href =
+      "test-quiz.html?chapter=" + encodeURIComponent(String(picked.chapterId || "basics")) +
+      "&level=" + encodeURIComponent(String(picked.levelId || "easy")) +
+      "&unit=" + encodeURIComponent(String(picked.unitId || "unit-1")) +
+      "&fresh=1&hq=" + encodeURIComponent(String(picked.questionIndex || 0));
+    linkEl.setAttribute("aria-label", "Open test question: " + String(picked.prompt || "Random question"));
+    bindHomeTestOptionResize(optionsEl);
+    scheduleAdaptiveOptionWidth(optionsEl);
+  }
+
   function setupHomeTestSpotlight() {
     var linkEl = document.querySelector("[data-home-test-link]");
     var promptEl = document.querySelector("[data-home-test-prompt]");
@@ -752,38 +994,12 @@
         if (!Array.isArray(catalog) || !catalog.length) throw new Error("Empty question catalog");
         var picked = catalog[pickStableSessionIndex(HOME_TEST_PICK_INDEX_KEY, catalog.length)];
         if (!picked || !picked.prompt) throw new Error("Invalid question item");
-
-        promptEl.textContent = picked.prompt;
-        var optionRows = Array.isArray(picked.optionTexts) ? picked.optionTexts : [];
-        if (optionRows.length) {
-          optionsEl.innerHTML = optionRows
-            .map(function (text, index) {
-              return (
-                '<p class="home-test__option">' +
-                '<span class="home-test__option-key">' + String.fromCharCode(65 + (index % 26)) + "</span>" +
-                "<span>" + escapeHtmlText(text) + "</span>" +
-                "</p>"
-              );
-            })
-            .join("");
-        } else {
-          optionsEl.innerHTML = '<p class="home-test__option"><span class="home-test__option-key">i</span><span>Open to view options</span></p>';
-        }
-        metaEl.textContent =
-          picked.chapterName + " · " + toTitleCase(picked.levelId) + " · " + picked.unitId.replace("unit-", "Unit ");
-
-        linkEl.href =
-          "test-quiz.html?chapter=" + encodeURIComponent(picked.chapterId) +
-          "&level=" + encodeURIComponent(picked.levelId) +
-          "&unit=" + encodeURIComponent(picked.unitId) +
-          "&fresh=1&hq=" + encodeURIComponent(String(picked.questionIndex));
-        linkEl.setAttribute("aria-label", "Open test question: " + picked.prompt);
+        renderHomeTestCard(linkEl, promptEl, optionsEl, metaEl, picked);
       })
       .catch(function () {
-        promptEl.textContent = "Tap to jump into a random color challenge question.";
-        optionsEl.innerHTML = '<p class="home-test__option"><span class="home-test__option-key">i</span><span>Options will appear after loading.</span></p>';
-        metaEl.textContent = "Test module";
-        linkEl.href = "test-quiz.html?fresh=1";
+        var fallbackCatalog = getHomeTestFallbackCatalog();
+        var pickedFallback = fallbackCatalog[pickStableSessionIndex(HOME_TEST_PICK_INDEX_KEY, fallbackCatalog.length)];
+        renderHomeTestCard(linkEl, promptEl, optionsEl, metaEl, pickedFallback);
       });
   }
 

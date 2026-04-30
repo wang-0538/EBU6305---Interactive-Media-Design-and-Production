@@ -269,31 +269,29 @@
   function updateAvatarUI() {
     var trigger = document.querySelector("[data-auth-trigger]");
     var avatar = document.querySelector("[data-user-avatar]");
-    var menu = document.querySelector("[data-user-menu]");
-    var dropdown = document.querySelector("[data-user-dropdown]");
     var currentUser = getCurrentUser();
     if (!trigger || !avatar) return;
 
     if (currentUser) {
-      if (menu) menu.classList.add("is-logged-in");
-      if (dropdown) dropdown.hidden = false;
       avatar.classList.remove("user-avatar--placeholder");
       avatar.classList.add("user-avatar--active");
       avatar.textContent = getInitial(currentUser);
-      trigger.setAttribute("title", "Logged in as " + currentUser + " - hover for Log out");
-      trigger.setAttribute("aria-label", "Account: " + currentUser);
-      trigger.setAttribute("aria-expanded", "false");
+      trigger.setAttribute("title", "Profile & Settings — logged in as " + currentUser);
+      trigger.setAttribute("aria-label", "Open Profile and Settings (signed in as " + currentUser + ")");
+      if (!window.CLWProfileSettings || !CLWProfileSettings.isOpen()) {
+        trigger.setAttribute("aria-expanded", "false");
+      }
       return;
     }
 
-    if (menu) menu.classList.remove("is-logged-in");
-    if (dropdown) dropdown.hidden = true;
     avatar.classList.add("user-avatar--placeholder");
     avatar.classList.remove("user-avatar--active");
     avatar.textContent = "";
-    trigger.setAttribute("title", "Log in or create account");
-    trigger.setAttribute("aria-label", "Account");
-    trigger.setAttribute("aria-expanded", "false");
+    trigger.setAttribute("title", "Profile & Settings");
+    trigger.setAttribute("aria-label", "Open Profile and Settings");
+    if (!window.CLWProfileSettings || !CLWProfileSettings.isOpen()) {
+      trigger.setAttribute("aria-expanded", "false");
+    }
   }
 
   function closeModal(backdrop) {
@@ -302,7 +300,7 @@
     }
   }
 
-  function createLoginModal() {
+  function createLoginModal(initialMode) {
     var backdrop = document.createElement("div");
     backdrop.className = "auth-modal-backdrop";
     backdrop.innerHTML = [
@@ -437,13 +435,8 @@
     });
 
     document.body.appendChild(backdrop);
-    applyMode("signin");
+    applyMode(initialMode === "signup" ? "signup" : "signin");
     usernameInput.focus();
-  }
-
-  function onAvatarClick() {
-    if (getCurrentUser()) return;
-    createLoginModal();
   }
 
   function onLogoutClick(event) {
@@ -455,13 +448,6 @@
     if (!ok) return;
     clearCurrentUser();
     updateAvatarUI();
-  }
-
-  function bind() {
-    var trigger = document.querySelector("[data-auth-trigger]");
-    if (!trigger || trigger.dataset.boundAuth === "1") return;
-    trigger.dataset.boundAuth = "1";
-    trigger.addEventListener("click", onAvatarClick);
   }
 
   function initAuthAPI() {
@@ -483,6 +469,10 @@
       },
       recordActivity: function (username, payload) {
         return recordActivity(username || getCurrentUser(), payload || {});
+      },
+      openLoginModal: function (options) {
+        var mode = options && options.mode === "signup" ? "signup" : "signin";
+        createLoginModal(mode);
       }
     };
   }
@@ -499,7 +489,6 @@
   function init() {
     ensureSeedAccounts();
     initAuthAPI();
-    bind();
     updateAvatarUI();
   }
 
