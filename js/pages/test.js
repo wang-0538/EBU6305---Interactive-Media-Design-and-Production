@@ -1,6 +1,31 @@
 ﻿(function () {
   "use strict";
 
+  function tx(str) {
+    if (str == null) return "";
+    if (window.CLWLocale && typeof CLWLocale.translateTest === "function") {
+      return CLWLocale.translateTest(String(str));
+    }
+    return String(str);
+  }
+
+  /** Hint text rebuilt for display so reviewTopic can be translated. */
+  function displayHintForQuestion(q) {
+    if (!q) return "";
+    if (q.type === "image") {
+      return tx("Focus on contrast, clarity, and context before visual excitement.");
+    }
+    var topic = q.reviewTopic ? tx(q.reviewTopic) : "";
+    return tx("Pause and match the answer to the core idea in {topic}.").replace("{topic}", topic);
+  }
+
+  function txAnswerTrail(s) {
+    if (s == null || s === "") return "";
+    if (typeof s !== "string") return tx(s);
+    if (s.indexOf(" -> ") === -1) return tx(s);
+    return s.split(" -> ").map(function (p) { return tx(p.trim()); }).join(" → ");
+  }
+
   var STORAGE_KEY = "clw_test_module_state_v2";
   var LEVEL_ORDER = ["easy", "medium", "hard"];
   var LEVEL_POINTS = { easy: 4, medium: 6, hard: 8 };
@@ -88,8 +113,9 @@
       }
     }
   };
-  var NO_STRENGTH_MESSAGE = "No clear strength yet. Revisit the linked Learn topic before trying this quiz again.";
-  function getNoWeaknessMessage(levelId) {
+  var NO_STRENGTH_CANONICAL =
+    "No clear strength yet. Revisit the linked Learn topic before trying this quiz again.";
+  function getNoWeaknessMessageKey(levelId) {
     return levelId === "hard"
       ? "No clear weak area yet. You have this down really well!"
       : "No clear weak area yet. Try the next difficulty and see what happens!";
@@ -233,6 +259,9 @@
   bindEvents();
   bindAuthStateSync();
   renderPage();
+  document.addEventListener("clw:locale-changed", function () {
+    renderPage();
+  });
 
   function buildQuestionData() {
     return {
@@ -735,10 +764,10 @@
 
     ctx.fillStyle = "#0f172a";
     ctx.font = "700 44px sans-serif";
-    ctx.fillText("Color Learning Test Result", 56, 88);
+    ctx.fillText(tx("Color Learning Test Result"), 56, 88);
     ctx.font = "600 25px sans-serif";
     ctx.fillStyle = "#334155";
-    drawWrappedCanvasText(ctx, result.chapterName + " - " + result.levelName, 56, 132, 720, 32);
+    drawWrappedCanvasText(ctx, tx(result.chapterName) + " - " + tx(result.levelName), 56, 132, 720, 32);
 
     ctx.fillStyle = "#ffffff";
     ctx.strokeStyle = "#dbe7f7";
@@ -749,9 +778,9 @@
     ctx.stroke();
 
     var stats = [
-      { label: "Score", value: result.score + " / " + result.maxScore },
-      { label: "Accuracy", value: accuracyPercent === 0 ? "00%" : accuracyPercent + "%" },
-      { label: "Correct", value: result.correctCount + " / " + result.totalQuestions }
+      { label: tx("Score"), value: result.score + " / " + result.maxScore },
+      { label: tx("Accuracy"), value: accuracyPercent === 0 ? "00%" : accuracyPercent + "%" },
+      { label: tx("Correct"), value: result.correctCount + " / " + result.totalQuestions }
     ];
     stats.forEach(function (item, index) {
       var left = 92 + index * 250;
@@ -772,16 +801,16 @@
       ctx.stroke();
       ctx.fillStyle = "#9f1239";
       ctx.font = "800 18px sans-serif";
-      ctx.fillText("Needs full review", 116, 355);
+      ctx.fillText(tx("Needs full review"), 116, 355);
     }
 
     ctx.fillStyle = "#334155";
     ctx.font = "600 20px sans-serif";
-    var focus = result.reviewTopics && result.reviewTopics.length ? result.reviewTopics[0] : "Keep practicing this unit.";
-    drawWrappedCanvasText(ctx, "Next focus: " + focus, 56, 438, 788, 30);
+    var focus = result.reviewTopics && result.reviewTopics.length ? tx(result.reviewTopics[0]) : tx("Keep practicing this unit.");
+    drawWrappedCanvasText(ctx, tx("Next focus: ") + focus, 56, 438, 788, 30);
     ctx.fillStyle = "#94a3b8";
     ctx.font = "600 16px sans-serif";
-    ctx.fillText("Shared from Test", 56, 482);
+    ctx.fillText(tx("Shared from Test"), 56, 482);
     return canvas.toDataURL("image/png");
   }
 
@@ -1115,10 +1144,10 @@
       if (page === "results") return renderResultsPage();
       return renderMistakesPage();
     } catch (error) {
-      var errText = error && error.message ? error.message : String(error || "Unknown error");
+      var errText = error && error.message ? error.message : String(error || tx("Unknown error"));
       rootEl.innerHTML =
-        '<section class="test-hero"><div class="test-kicker">Render error</div><h1 class="test-title">This page failed to render.</h1><p class="test-subtitle">Please refresh once. If it keeps happening, restart this quiz unit from the map.</p><p class="test-subtitle"><strong>Error detail:</strong> ' + errText + '</p><div class="test-quick-actions">' +
-        renderLinkButton("Back to map", "test.html", "test-link-btn--primary") +
+        '<section class="test-hero"><div class="test-kicker">' + tx("Render error") + '</div><h1 class="test-title">' + tx("This page failed to render.") + '</h1><p class="test-subtitle">' + tx("Please refresh once. If it keeps happening, restart this quiz unit from the map.") + '</p><p class="test-subtitle"><strong>' + tx("Error detail:") + '</strong> ' + errText + '</p><div class="test-quick-actions">' +
+        renderLinkButton(tx("Back to map"), "test.html", "test-link-btn--primary") +
         "</div></section>";
       if (window && window.console && console.error) console.error("[test-module] renderPage failed:", error);
       setTestMapDockOpenOnBody(false);
@@ -1200,11 +1229,11 @@
       );
     }
     return (
-      '<nav class="test-map-dock__bar" aria-label="Map summary panels">' +
-        tab("snapshot", "Progress Snapshot") +
-        tab("review", "Recommended Review") +
-        tab("folder", "Question Folder") +
-        tab("rewards", "Rewards") +
+      '<nav class="test-map-dock__bar" aria-label="' + escapeAttr(tx("Map summary panels")) + '">' +
+        tab("snapshot", tx("Progress Snapshot")) +
+        tab("review", tx("Recommended Review")) +
+        tab("folder", tx("Question Folder")) +
+        tab("rewards", tx("Rewards")) +
       "</nav>"
     );
   }
@@ -1227,22 +1256,22 @@
 
     var snapshotInner =
       '<div class="test-stat-grid">' +
-      renderStat("Whole Chapter", snapshot.chapterUnits, "Finished units in this chapter, all difficulties added together.") +
-      renderStat("Average Accuracy", snapshot.overallAccuracy, "Average accuracy across completed quizzes for the chapter and difficulty you are viewing (every full run counts).") +
-      renderStatLink("Last working on", resumeText, resumeHref, "The map unit (chapter, unit, difficulty) where you last pressed Submit in a normal path quiz - not mistakes review or bookmark practice.", "test-stat--full-row") +
+      renderStat(tx("Whole Chapter"), snapshot.chapterUnits, tx("Finished units in this chapter, all difficulties added together.")) +
+      renderStat(tx("Average Accuracy"), snapshot.overallAccuracy, tx("Average accuracy across completed quizzes for the chapter and difficulty you are viewing (every full run counts).")) +
+      renderStatLink(tx("Last working on"), resumeText, resumeHref, tx("The map unit (chapter, unit, difficulty) where you last pressed Submit in a normal path quiz - not mistakes review or bookmark practice."), "test-stat--full-row") +
       "</div>";
     var recommendedInner = renderLearnTopicList(recommended);
     var mapAsideCards =
-      renderSidebarCard("Progress Snapshot", snapshotInner, IC.snapshotTitle) +
-      renderSidebarCard("Recommended Review", recommendedInner, IC.bookTitle) +
+      renderSidebarCard(tx("Progress Snapshot"), snapshotInner, IC.snapshotTitle) +
+      renderSidebarCard(tx("Recommended Review"), recommendedInner, IC.bookTitle) +
       renderReviewCard(chapter.id, level.id) +
       renderRewardsCard(totalScore);
     var mapShellDock =
       '<div class="test-map-dock" data-map-dock>' +
-      '<button type="button" class="test-map-dock__scrim" data-map-dock-scrim aria-label="Close panel"></button>' +
+      '<button type="button" class="test-map-dock__scrim" data-map-dock-scrim aria-label="' + escapeAttr(tx("Close panel")) + '"></button>' +
       '<div class="test-map-dock__sheet-wrap">' +
-      renderSidebarCard("Progress Snapshot", snapshotInner, IC.snapshotTitle, "snapshot") +
-      renderSidebarCard("Recommended Review", recommendedInner, IC.bookTitle, "review") +
+      renderSidebarCard(tx("Progress Snapshot"), snapshotInner, IC.snapshotTitle, "snapshot") +
+      renderSidebarCard(tx("Recommended Review"), recommendedInner, IC.bookTitle, "review") +
       renderReviewCard(chapter.id, level.id, "folder") +
       renderRewardsCard(totalScore, "rewards") +
       "</div>" +
@@ -1255,13 +1284,13 @@
           '<div class="test-map-main">' +
             '<section class="test-panel test-map-header-card">' +
               '<div class="test-map-hcard__meta">' +
-                '<div class="test-kicker">' + chapter.eyebrow + '</div>' +
-                '<h2 class="test-map-heading">' + chapter.name + '</h2>' +
-                '<p class="test-map-intro">' + chapter.intro + '</p>' +
+                '<div class="test-kicker">' + tx(chapter.eyebrow) + '</div>' +
+                '<h2 class="test-map-heading">' + tx(chapter.name) + '</h2>' +
+                '<p class="test-map-intro">' + tx(chapter.intro) + '</p>' +
               '</div>' +
               '<div class="test-map-filters">' +
-                '<label class="test-map-topbar__field"><span>Chapter</span>' + renderMapChapterSelect(chapter.id) + '</label>' +
-                '<label class="test-map-topbar__field"><span>Difficulty</span>' + renderMapLevelSelect(level.id) + '</label>' +
+                '<label class="test-map-topbar__field"><span>' + tx("Chapter") + '</span>' + renderMapChapterSelect(chapter.id) + '</label>' +
+                '<label class="test-map-topbar__field"><span>' + tx("Difficulty") + '</span>' + renderMapLevelSelect(level.id) + '</label>' +
               '</div>' +
             '</section>' +
             '<div class="test-grid test-grid--map">' +
@@ -1333,14 +1362,14 @@
         closeBtnHtml +
         '<div class="badge-reveal__content">' +
           '<p class="badge-reveal__kicker" style="color:' + colorPrimary + '">' +
-            'Your Badge' +
+            tx("Your Badge") +
           '</p>' +
-          '<h2 class="badge-reveal__title">Congratulations!</h2>' +
+          '<h2 class="badge-reveal__title">' + tx("Congratulations!") + '</h2>' +
           '<div class="badge-reveal__stage">' +
             '<div class="badge-reveal__sparkles"></div>' +
             '<div class="badge-reveal__badge">' +
               badgeSvg +
-              '<span class="badge-reveal__name" style="color:' + colorPrimary + '">' + badgeName + '</span>' +
+              '<span class="badge-reveal__name" style="color:' + colorPrimary + '">' + tx(badgeName) + '</span>' +
               (earnDesc ? '<span class="badge-reveal__desc">' + earnDesc + '</span>' : '') +
             '</div>' +
           '</div>' +
@@ -1459,9 +1488,11 @@
 
   function buildBadgeEarnDescription(chapterId) {
     var chapter = getChapter(chapterId);
-    var name = chapter ? chapter.name : 'this chapter';
+    var name = chapter ? chapter.name : "this chapter";
     var count = UNIT_TEMPLATES.easy.length;
-    return 'Awarded for earning 3 stars on all ' + count + ' units in ' + name + ' within any single difficulty.';
+    return tx("Awarded for earning 3 stars on all {count} units in {name} within any single difficulty.")
+      .replace("{count}", String(count))
+      .replace("{name}", tx(name));
   }
 
   function renderQuizPage() {
@@ -1470,9 +1501,9 @@
     if (!session) {
       quizDialog = null;
       rootEl.innerHTML =
-        '<section class="test-hero"><div class="test-kicker">Quiz unavailable</div><h1 class="test-title">No question set is ready for this route yet.</h1><div class="test-quick-actions">' +
-        renderLinkButton("Back to map", "test.html", "test-link-btn--primary") +
-        renderLinkButton("Open mistakes", "test-mistakes.html", "test-link-btn--soft") +
+        '<section class="test-hero"><div class="test-kicker">' + tx("Quiz unavailable") + '</div><h1 class="test-title">' + tx("No question set is ready for this route yet.") + '</h1><div class="test-quick-actions">' +
+        renderLinkButton(tx("Back to map"), "test.html", "test-link-btn--primary") +
+        renderLinkButton(tx("Open mistakes"), "test-mistakes.html", "test-link-btn--soft") +
         "</div></section>";
       return;
     }
@@ -1482,8 +1513,8 @@
     if (!Array.isArray(session.questions) || !session.questions.length) {
       quizDialog = null;
       rootEl.innerHTML =
-        '<section class="test-hero"><div class="test-kicker">Quiz unavailable</div><h1 class="test-title">No question set is ready for this route yet.</h1><div class="test-quick-actions">' +
-        renderLinkButton("Back to map", "test.html", "test-link-btn--primary") +
+        '<section class="test-hero"><div class="test-kicker">' + tx("Quiz unavailable") + '</div><h1 class="test-title">' + tx("No question set is ready for this route yet.") + '</h1><div class="test-quick-actions">' +
+        renderLinkButton(tx("Back to map"), "test.html", "test-link-btn--primary") +
         "</div></section>";
       return;
     }
@@ -1495,13 +1526,13 @@
     if (!question) {
       quizDialog = null;
       rootEl.innerHTML =
-        '<section class="test-hero"><div class="test-kicker">Quiz unavailable</div><h1 class="test-title">Current quiz state is out of sync. Please restart this unit.</h1><div class="test-quick-actions">' +
-        renderLinkButton("Restart unit", buildUrl("test-quiz.html", { chapter: session.chapterId, level: session.levelId, unit: session.unitId, fresh: "1" }), "test-link-btn--primary") +
-        renderLinkButton("Back to map", buildUrl("test.html", { chapter: session.chapterId, level: session.levelId }), "test-link-btn--soft") +
+        '<section class="test-hero"><div class="test-kicker">' + tx("Quiz unavailable") + '</div><h1 class="test-title">' + tx("Current quiz state is out of sync. Please restart this unit.") + '</h1><div class="test-quick-actions">' +
+        renderLinkButton(tx("Restart unit"), buildUrl("test-quiz.html", { chapter: session.chapterId, level: session.levelId, unit: session.unitId, fresh: "1" }), "test-link-btn--primary") +
+        renderLinkButton(tx("Back to map"), buildUrl("test.html", { chapter: session.chapterId, level: session.levelId }), "test-link-btn--soft") +
         "</div></section>";
       return;
     }
-    if (!question.prompt) question.prompt = "Question";
+    if (!question.prompt) question.prompt = tx("Question");
     if (!question.type) question.type = "mcq";
     if (!Array.isArray(question.options) && question.type !== "sort") question.options = [];
     var draft = session.drafts[question.id];
@@ -1524,21 +1555,21 @@
           '<div class="quiz-workspace__main">' +
             '<section class="quiz-workspace-card">' +
               '<div class="quiz-card__progress-row">' +
-                '<span class="quiz-card__progress-text">Question ' + (session.currentIndex + 1) + ' / ' + session.questions.length + '</span>' +
-                '<button type="button" class="quiz-flag-btn' + (isQuestionFlagged(question.id) ? ' is-flagged' : '') + '" data-flag-question="' + question.id + '" title="' + (isQuestionFlagged(question.id) ? 'Remove bookmark' : 'Bookmark this question') + '">' + (isQuestionFlagged(question.id) ? IC.flagFilled : IC.flag) + '</button>' +
+                '<span class="quiz-card__progress-text">' + tx("Question {cur} / {total}").replace("{cur}", String(session.currentIndex + 1)).replace("{total}", String(session.questions.length)) + '</span>' +
+                '<button type="button" class="quiz-flag-btn' + (isQuestionFlagged(question.id) ? ' is-flagged' : '') + '" data-flag-question="' + question.id + '" title="' + escapeAttr(isQuestionFlagged(question.id) ? tx("Remove bookmark") : tx("Bookmark this question")) + '">' + (isQuestionFlagged(question.id) ? IC.flagFilled : IC.flag) + '</button>' +
               '</div>' +
               '<div class="quiz-progress__bar quiz-card__progress-bar"><div class="quiz-progress__fill" style="width:' + progress + '%"></div></div>' +
-              '<h1 class="quiz-workspace-card__prompt">' + question.prompt + '</h1>' +
+              '<h1 class="quiz-workspace-card__prompt">' + tx(question.prompt) + '</h1>' +
               renderQuestionBody(question, draft, currentResult) +
               renderHintBlock(question, session) +
             '</section>' +
             (currentResult ? renderFeedback(question, currentResult) : "") +
             '<div class="quiz-workspace-nav">' +
-              renderQuizNavButton(IC.prev + ' Previous', "prev", session.currentIndex === 0, "is-prev") +
-              renderQuizNavButton(IC.hint + ' Hint', "hint", !!currentResult, "is-hint") +
+              renderQuizNavButton(IC.prev + " " + tx("Previous"), "prev", session.currentIndex === 0, "is-prev") +
+              renderQuizNavButton(IC.hint + " " + tx("Hint"), "hint", !!currentResult, "is-hint") +
               (currentResult
-                ? renderQuizNavButton(isLast ? (session.browseOnly ? "Back to summary" : IC.finish + " Finish") : "Next " + IC.next, "next", isLast && !allSubmitted, "is-next")
-                : renderQuizNavButton(IC.submit + ' Submit', "submit", !hasAnswer(question, draft), "is-next")) +
+                ? renderQuizNavButton(isLast ? (session.browseOnly ? tx("Back to summary") : IC.finish + " " + tx("Finish")) : tx("Next") + " " + IC.next, "next", isLast && !allSubmitted, "is-next")
+                : renderQuizNavButton(IC.submit + " " + tx("Submit"), "submit", !hasAnswer(question, draft), "is-next")) +
             '</div>' +
           '</div>' +
           '<aside class="quiz-workspace__sidebar">' +
@@ -1567,19 +1598,19 @@
     var cancelClass = "quiz-dialog__btn quiz-dialog__btn--ghost";
     var confirmClass = "quiz-dialog__btn quiz-dialog__btn--primary";
     if (quizDialog.kind === "hint") {
-      title = "Use a hint?";
+      title = tx("Use a hint?");
       body =
-        "If you reveal a hint, you will earn <strong>fewer points</strong> on this question when you answer correctly. Continue?";
-      confirmLabel = "Show hint";
-      cancelLabel = "Not now";
+        tx("If you reveal a hint, you will earn <strong>fewer points</strong> on this question when you answer correctly. Continue?");
+      confirmLabel = tx("Show hint");
+      cancelLabel = tx("Not now");
       cancelClass = "quiz-dialog__btn quiz-dialog__btn--primary";
       confirmClass = "quiz-dialog__btn quiz-dialog__btn--ghost";
     } else {
-      title = "Leave this quiz?";
+      title = tx("Leave this quiz?");
       body =
-        "Your progress is saved automatically. If you go back now, you can pick up where you left off later.";
-      confirmLabel = "Leave";
-      cancelLabel = "Stay";
+        tx("Your progress is saved automatically. If you go back now, you can pick up where you left off later.");
+      confirmLabel = tx("Leave");
+      cancelLabel = tx("Stay");
       cancelClass = "quiz-dialog__btn quiz-dialog__btn--primary";
       confirmClass = "quiz-dialog__btn quiz-dialog__btn--ghost";
     }
@@ -1603,19 +1634,19 @@
 
   function renderQuizWorkspaceTopbar(session, chapter, level, overviewPanelHtml, analysisPanelHtml) {
     var unitIndex = Math.max(0, (Number(session.unitId.split("-")[1]) || 1) - 1);
-    var levelName = level && level.name ? level.name : "Level";
-    var chapterName = chapter && chapter.name ? chapter.name : "Chapter";
+    var levelName = level && level.name ? tx(level.name) : tx("Level");
+    var chapterName = chapter && chapter.name ? tx(chapter.name) : tx("Chapter");
     var title = getMapNodeNumber(session.chapterId, session.levelId, unitIndex) + " · " + levelName;
 
     var closeHref = session.browseOnly && session.reviewResultId
       ? buildUrl("test-results.html", { chapter: session.chapterId, level: session.levelId, resultId: session.reviewResultId })
       : buildUrl("test.html", { chapter: session.chapterId, level: session.levelId });
 
-    var backLabel = session.browseOnly ? "Back to summary" : "Leave quiz";
+    var backLabel = session.browseOnly ? tx("Back to summary") : tx("Leave quiz");
     var closeControl = session.browseOnly
       ? '<a class="quiz-workspace-topbar__close quiz-workspace-topbar__close--browse" href="' + escapeAttr(closeHref) + '" aria-label="' + escapeAttr(backLabel) + '">' +
           '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>' +
-          '<span>Back to Summary</span>' +
+          '<span>' + tx("Back to Summary") + '</span>' +
         "</a>"
       : '<button type="button" class="quiz-workspace-topbar__close" data-quiz-exit data-quiz-exit-href="' + escapeAttr(closeHref) + '" aria-label="' + escapeAttr(backLabel) + '">' +
           '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>' +
@@ -1629,7 +1660,7 @@
               '<span class="quiz-workspace-dock__tab-ic" aria-hidden="true">' +
               IC.overview +
               "</span>" +
-              '<span class="visually-hidden">Question Overview</span>' +
+              '<span class="visually-hidden">' + tx("Question Overview") + "</span>" +
               "</button>" +
               '<div id="quiz-dock-panel-overview" class="quiz-workspace-dock__sheet" data-quiz-workspace-dock-sheet="overview">' +
               overviewPanelHtml +
@@ -1640,7 +1671,7 @@
               '<span class="quiz-workspace-dock__tab-ic" aria-hidden="true">' +
               IC.analysis +
               "</span>" +
-              '<span class="visually-hidden">Live Analysis</span>' +
+              '<span class="visually-hidden">' + tx("Live Analysis") + "</span>" +
               "</button>" +
               '<div id="quiz-dock-panel-analysis" class="quiz-workspace-dock__sheet" data-quiz-workspace-dock-sheet="analysis">' +
               analysisPanelHtml +
@@ -1704,7 +1735,7 @@
           '<span class="quiz-sidecard__stat-ic quiz-sidecard__stat-ic--time" aria-hidden="true">' +
           IC.timeClock +
           "</span>" +
-          '<span class="quiz-sidecard__stat-name">Time</span>' +
+          '<span class="quiz-sidecard__stat-name">' + tx("Time") + '</span>' +
           '<strong class="quiz-sidecard__stat-val"><span data-quiz-live-time>' +
           timeText +
           "</span></strong>" +
@@ -1713,7 +1744,7 @@
           '<span class="quiz-sidecard__stat-ic" aria-hidden="true">' +
           IC.scoreStat +
           "</span>" +
-          '<span class="quiz-sidecard__stat-name">Current Score</span>' +
+          '<span class="quiz-sidecard__stat-name">' + tx("Current Score") + '</span>' +
           '<strong class="quiz-sidecard__stat-val"><span data-quiz-live-score>' +
           session.score +
           "</span></strong>" +
@@ -1726,7 +1757,7 @@
     var answered = Object.keys(session.submitted).length;
 
     return '<section class="quiz-sidecard quiz-sidecard--overview">' +
-      '<h3 class="quiz-sidecard__title">' + IC.overview + ' Question Overview</h3>' +
+      '<h3 class="quiz-sidecard__title">' + IC.overview + " " + tx("Question Overview") + "</h3>" +
       '<div class="quiz-index-grid">' + session.questions.map(function (item, index) {
         var result = session.submitted[item.id];
         var classes = "quiz-index-btn";
@@ -1744,24 +1775,24 @@
         }
         return '<button type="button" class="' + classes + '" data-quiz-jump="' + index + '"><span class="quiz-index-btn__number">' + (index + 1) + '</span>' + statusIcon + '</button>';
       }).join("") + '</div>' +
-      '<div class="quiz-overview-stats"><span>Answered:</span><strong>' + answered + ' / ' + session.questions.length + '</strong></div>' +
+      '<div class="quiz-overview-stats"><span>' + tx("Answered:") + '</span><strong>' + answered + ' / ' + session.questions.length + '</strong></div>' +
     '</section>';
   }
 
   function renderQuizAnalysisPanel(session, accuracy) {
     return '<section class="quiz-sidecard quiz-sidecard--analysis">' +
-      '<h3 class="quiz-sidecard__title">' + IC.analysis + ' Live Analysis</h3>' +
-      '<div class="quiz-sidecard__metric"><span>Accuracy</span><strong>' + accuracy + '</strong></div>' +
+      '<h3 class="quiz-sidecard__title">' + IC.analysis + " " + tx("Live Analysis") + "</h3>" +
+      '<div class="quiz-sidecard__metric"><span>' + tx("Accuracy") + '</span><strong>' + accuracy + '</strong></div>' +
       '<div class="quiz-sidecard__meter"><div class="quiz-sidecard__meter-fill" style="width:' + Math.max(parseInt(accuracy, 10) || 0, 4) + '%"></div></div>' +
       '<div class="quiz-sidecard__statgrid">' +
         '<div class="quiz-sidecard__stat is-correct">' +
           '<span class="quiz-sidecard__stat-ic" aria-hidden="true">' + IC.correctStat + '</span>' +
-          '<span class="quiz-sidecard__stat-name">Correct</span>' +
+          '<span class="quiz-sidecard__stat-name">' + tx("Correct") + '</span>' +
           '<strong class="quiz-sidecard__stat-val">' + session.correctCount + '</strong>' +
         '</div>' +
         '<div class="quiz-sidecard__stat is-wrong">' +
           '<span class="quiz-sidecard__stat-ic" aria-hidden="true">' + IC.wrongStat + '</span>' +
-          '<span class="quiz-sidecard__stat-name">Wrong</span>' +
+          '<span class="quiz-sidecard__stat-name">' + tx("Wrong") + '</span>' +
           '<strong class="quiz-sidecard__stat-val">' + Math.max(Object.keys(session.submitted).length - session.correctCount, 0) + '</strong>' +
         '</div>' +
       '</div>' +
@@ -1782,7 +1813,7 @@
           '<circle cx="24" cy="18" r="8.5" fill="color-mix(in srgb,var(--color-primary) 12%,white)"/>' +
           '<path d="M24 11.5l2.1 4.25h4.7L27.35 18.9l1.45 4.65L24 20.35l-4.8 3.2 1.45-4.65-3.45-2.15h4.7z" fill="var(--color-primary)"/>' +
         "</svg></div>" +
-        '<span class="result-badge-name">' + badgeName + "</span>" +
+        '<span class="result-badge-name">' + tx(badgeName) + "</span>" +
       "</div>"
     );
   }
@@ -1792,8 +1823,8 @@
     var result = getResultForPage();
     if (!result) {
       rootEl.innerHTML =
-        '<section class="test-hero"><div class="test-kicker">Results unavailable</div><h1 class="test-title">No completed quiz result is available yet.</h1><div class="test-quick-actions">' +
-        renderLinkButton("Back to map", "test.html", "test-link-btn--primary") +
+        '<section class="test-hero"><div class="test-kicker">' + tx("Results unavailable") + '</div><h1 class="test-title">' + tx("No completed quiz result is available yet.") + '</h1><div class="test-quick-actions">' +
+        renderLinkButton(tx("Back to map"), "test.html", "test-link-btn--primary") +
         "</div></section>";
       return;
     }
@@ -1831,7 +1862,7 @@
         })();
     var miniOvHtml =
       '<div class="results-mini-ov-wrap">' +
-        '<p class="results-mini-ov__hint" style="animation-delay:' + resultsHintDelaySec.toFixed(2) + 's">Tap a box to review! <span aria-hidden="true">→</span></p>' +
+        '<p class="results-mini-ov__hint" style="animation-delay:' + resultsHintDelaySec.toFixed(2) + 's">' + tx("Tap a box to review!") + ' <span aria-hidden="true">→</span></p>' +
         '<div class="results-mini-ov">' +
         qResults.map(function (qr, i) {
           var cls = qr.isCorrect === null ? " is-pending" : qr.isCorrect ? " is-correct" : " is-wrong";
@@ -1854,18 +1885,18 @@
       ? '<div class="results-attempt-bar">' +
           '<button type="button" class="results-attempt-nav-btn"' +
             (prevAttempt ? ' data-attempt-nav="' + prevAttempt.id + '" data-slide-dir="right"' : ' disabled') +
-            ' aria-label="Older attempt">\u2039</button>' +
+            ' aria-label="' + escapeAttr(tx("Older attempt")) + '">\u2039</button>' +
           '<div class="results-attempt-info">' +
-            '<span class="results-attempt-label">Attempt ' + (currentIdx + 1) + ' / ' + allAttempts.length + '</span>' +
+            '<span class="results-attempt-label">' + tx("Attempt {cur} / {total}").replace("{cur}", String(currentIdx + 1)).replace("{total}", String(allAttempts.length)) + '</span>' +
             '<span class="results-attempt-date">' + formatDateTime(result.timestamp) + '</span>' +
           '</div>' +
           '<button type="button" class="results-attempt-nav-btn"' +
             (nextAttempt ? ' data-attempt-nav="' + nextAttempt.id + '" data-slide-dir="left"' : ' disabled') +
-            ' aria-label="Newer attempt">\u203a</button>' +
+            ' aria-label="' + escapeAttr(tx("Newer attempt")) + '">\u203a</button>' +
         '</div>'
       : '<div class="results-attempt-bar results-attempt-bar--single">' +
           '<div class="results-attempt-info">' +
-            '<span class="results-attempt-label">First attempt</span>' +
+            '<span class="results-attempt-label">' + tx("First attempt") + '</span>' +
             '<span class="results-attempt-date">' + formatDateTime(result.timestamp) + '</span>' +
           '</div>' +
         '</div>';
@@ -1888,10 +1919,10 @@
     rootEl.innerHTML =
       '<div class="results-page">' +
         '<div class="results-topbar">' +
-          '<a class="results-back-btn" href="' + backUrl + '" aria-label="Back to map">' + IC.prev + '</a>' +
+          '<a class="results-back-btn" href="' + backUrl + '" aria-label="' + escapeAttr(tx("Back to map")) + '">' + IC.prev + '</a>' +
           '<div class="results-topbar__heading">' +
-            '<div class="test-kicker">Results Summary</div>' +
-            '<h1 class="test-title">' + result.chapterName + ' ' + nodeNum + ' \u2013 ' + result.levelName + '</h1>' +
+            '<div class="test-kicker">' + tx("Results Summary") + '</div>' +
+            '<h1 class="test-title">' + tx(result.chapterName) + ' ' + nodeNum + ' \u2013 ' + tx(result.levelName) + '</h1>' +
           '</div>' +
           '<div class="results-topbar__right">' +
             miniOvHtml +
@@ -1902,28 +1933,32 @@
           '<div class="results-stars-section">' +
             '<div class="results-stars-row">' + starsHtml + badgeHtml + '</div>' +
             '<div class="result-stats-grid">' +
-              renderResultStat("Score", result.score + " / " + result.maxScore) +
-              renderResultStat("Accuracy", Math.round(result.accuracy * 100) + "%") +
-              renderResultStat("Hints used", result.hintsUsed) +
-              renderResultStat("Time spent", formatElapsedDuration(getResultElapsedMs(result))) +
+              renderResultStat(tx("Score"), result.score + " / " + result.maxScore) +
+              renderResultStat(tx("Accuracy"), Math.round(result.accuracy * 100) + "%") +
+              renderResultStat(tx("Hints used"), result.hintsUsed) +
+              renderResultStat(tx("Time spent"), formatElapsedDuration(getResultElapsedMs(result))) +
             '</div>' +
           '</div>' +
           '<div class="results-insights">' +
             '<div class="results-split">' +
-              renderResultsCard("Strengths", renderResultInsightContent(result.strengths, NO_STRENGTH_MESSAGE), IC.strengthTitle) +
-              renderResultsCard("Weak Areas", renderResultInsightContent(result.weakAreas, result.weakAreasEmptyMessage || getNoWeaknessMessage(result.level)), IC.weakTitle) +
+              renderResultsCard("Strengths", renderResultInsightContent(result.strengths, NO_STRENGTH_CANONICAL), IC.strengthTitle) +
+              renderResultsCard(
+                "Weak Areas",
+                renderResultInsightContent(result.weakAreas, result.weakAreasEmptyMessage || getNoWeaknessMessageKey(result.level)),
+                IC.weakTitle
+              ) +
               renderResultsCard("Recommended review topics", renderLearnTopicList(learnTopics), IC.bookTitle) +
             '</div>' +
           '</div>' +
         '</div>' +
         '<div class="results-actions-bar">' +
           renderLinkButton(
-            '<span class="label-desktop">Retry This Quiz</span><span class="label-mobile">Retry</span>',
+            '<span class="label-desktop">' + tx("Retry This Quiz") + '</span><span class="label-mobile">' + tx("Retry") + '</span>',
             buildUrl("test-quiz.html", { chapter: result.chapter, level: result.level, unit: result.unit, fresh: "1" }),
             "test-link-btn--primary results-action-retry"
           ) +
           renderLinkButton(
-            "Reflect",
+            tx("Reflect"),
             buildUrl("test-quiz.html", { chapter: result.chapter, level: result.level, unit: result.unit, resultId: result.id, browse: "1" }),
             "test-link-btn--primary results-action-summarize"
           ) +
@@ -1933,7 +1968,7 @@
                 '<path d="M16 11c1.93 0 3.5-1.57 3.5-3.5S17.93 4 16 4s-3.5 1.57-3.5 3.5S14.07 11 16 11zm-8 0c1.93 0 3.5-1.57 3.5-3.5S9.93 4 8 4 4.5 5.57 4.5 7.5 6.07 11 8 11zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4zm8 0c-.29 0-.62.02-.97.05 1.33.96 2.47 2.25 2.47 3.95v2h6v-2c0-2.66-5.33-4-7.5-4z"/>' +
               "</svg>" +
             "</span>" +
-            '<span class="label-desktop">Share to Community</span><span class="label-mobile">Share</span>' +
+            '<span class="label-desktop">' + tx("Share to Community") + '</span><span class="label-mobile">' + tx("Share") + '</span>' +
           "</button>" +
         '</div>' +
       '</div>';
@@ -1992,12 +2027,12 @@
     var mistakeSvg = '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4 13.59L14.59 17 12 14.41 9.41 17 8 15.59l2.59-2.59L8 10.41 9.41 9 12 11.59 14.59 9 16 10.41l-2.59 2.59L16 15.59z"/></svg>';
 
     var tabsHtml =
-      '<nav class="mistakes-tabs" aria-label="Question folder sections">' +
+      '<nav class="mistakes-tabs" aria-label="' + escapeAttr(tx("Question folder sections")) + '">' +
         '<a class="mistakes-tab' + (tab === "mistakes" ? " is-active" : "") + '" href="' + mkTabUrl + '">' +
-          mistakeSvg + ' Mistakes' +
+          mistakeSvg + " " + tx("Mistakes") +
         '</a>' +
         '<a class="mistakes-tab' + (tab === "flagged" ? " is-active" : "") + '" href="' + flTabUrl + '">' +
-          bookmarkSvg + ' Bookmarked' +
+          bookmarkSvg + " " + tx("Bookmarked") +
         '</a>' +
       '</nav>';
 
@@ -2010,7 +2045,7 @@
         renderMistakesToolbar(chapterFilter, levelFilter, null) +
         (fPageItems.length
           ? '<div class="mistake-compact-grid">' + fPageItems.map(renderFlaggedCompactCard).join("") + '</div>'
-          : '<div class="mistakes-empty mistakes-empty--stacked"><p class="mistakes-empty__line">No bookmarked questions yet.</p><p class="mistakes-empty__line">Use the <span class="mistakes-empty__ic" aria-hidden="true">' + bookmarkSvg + '</span> button during a quiz to save questions here.</p></div>') +
+          : '<div class="mistakes-empty mistakes-empty--stacked"><p class="mistakes-empty__line">' + tx("No bookmarked questions yet.") + '</p><p class="mistakes-empty__line">' + tx("Use the bookmark button during a quiz to save questions here.") + '</p></div>') +
         renderPagination(fPage, fTotalPages, chapterFilter, levelFilter, tab, "");
     } else {
       var visible = getVisibleMistakes(chapterFilter, levelFilter, statusFilter);
@@ -2020,15 +2055,15 @@
       bodyHtml =
         renderMistakesToolbar(chapterFilter, levelFilter, statusFilter) +
         '<div class="mistakes-stats-row">' +
-          '<span class="mstat mstat--total"><strong>' + allMistakes.length + '</strong> total</span>' +
+          '<span class="mstat mstat--total"><strong>' + allMistakes.length + '</strong> ' + tx("total") + '</span>' +
           '<span class="msb-sep" aria-hidden="true"></span>' +
-          '<span class="mstat mstat--reviewed"><strong>' + reviewedCount + '</strong> reviewed</span>' +
+          '<span class="mstat mstat--reviewed"><strong>' + reviewedCount + '</strong> ' + tx("reviewed") + '</span>' +
           '<span class="msb-sep" aria-hidden="true"></span>' +
-          '<span class="mstat mstat--pending"><strong>' + pendingCount + '</strong> pending</span>' +
+          '<span class="mstat mstat--pending"><strong>' + pendingCount + '</strong> ' + tx("pending") + '</span>' +
         '</div>' +
         (mPageItems.length
           ? '<div class="mistake-compact-grid">' + mPageItems.map(renderMistakeCompactCard).join("") + '</div>'
-          : '<div class="mistakes-empty">No mistakes match the current filters.</div>') +
+          : '<div class="mistakes-empty">' + tx("No mistakes match the current filters.") + '</div>') +
         renderPagination(mPage, mTotalPages, chapterFilter, levelFilter, tab, statusFilter);
     }
 
@@ -2038,11 +2073,11 @@
         ? renderMistakesToolbar(chapterFilter, levelFilter, null)
         : renderMistakesToolbar(chapterFilter, levelFilter, statusFilter) +
           '<div class="mistakes-stats-row">' +
-            '<span class="mstat mstat--total"><strong>' + allMistakes.length + '</strong> total</span>' +
+            '<span class="mstat mstat--total"><strong>' + allMistakes.length + '</strong> ' + tx("total") + '</span>' +
             '<span class="msb-sep" aria-hidden="true"></span>' +
-            '<span class="mstat mstat--reviewed"><strong>' + reviewedCount + '</strong> reviewed</span>' +
+            '<span class="mstat mstat--reviewed"><strong>' + reviewedCount + '</strong> ' + tx("reviewed") + '</span>' +
             '<span class="msb-sep" aria-hidden="true"></span>' +
-            '<span class="mstat mstat--pending"><strong>' + pendingCount + '</strong> pending</span>' +
+            '<span class="mstat mstat--pending"><strong>' + pendingCount + '</strong> ' + tx("pending") + '</span>' +
           '</div>';
       mainBodyHtml =
         '<div class="mistakes-tab-body mistakes-tab-body--solo">' +
@@ -2057,13 +2092,13 @@
       '<div class="mistakes-shell">' +
         '<header class="mistakes-header">' +
           '<div class="mistakes-header__left">' +
-            '<a class="mistakes-back-btn" href="' + backUrl + '" aria-label="Back to map">' +
+            '<a class="mistakes-back-btn" href="' + backUrl + '" aria-label="' + escapeAttr(tx("Back to map")) + '">' +
               '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>' +
             '</a>' +
             '<div class="mistakes-header__text">' +
-              '<div class="test-kicker">Study Tools</div>' +
-              '<h1 class="mistakes-title">Question Folder</h1>' +
-              '<p class="mistakes-subtitle">Review missed and bookmarked questions.</p>' +
+              '<div class="test-kicker">' + tx("Study Tools") + '</div>' +
+              '<h1 class="mistakes-title">' + tx("Question Folder") + '</h1>' +
+              '<p class="mistakes-subtitle">' + tx("Review missed and bookmarked questions.") + '</p>' +
             '</div>' +
           '</div>' +
           tabsHtml +
@@ -2445,9 +2480,13 @@
         var sub = quiz.submitted[q.id] || null;
         return { id: q.id, isCorrect: sub ? sub.isCorrect : null, selected: sub ? sub.selected : null, questionSnapshot: clone(q) };
       }),
-      strengths: unique(strongTopics).slice(0, 3).length ? unique(strongTopics).slice(0, 3) : [NO_STRENGTH_MESSAGE],
-      weakAreas: unique(weakTopics).slice(0, 3).length ? unique(weakTopics).slice(0, 3) : [getNoWeaknessMessage(quiz.levelId)],
-      weakAreasEmptyMessage: getNoWeaknessMessage(quiz.levelId),
+      strengths: unique(strongTopics).slice(0, 3).length
+        ? unique(strongTopics).slice(0, 3)
+        : [NO_STRENGTH_CANONICAL],
+      weakAreas: unique(weakTopics).slice(0, 3).length
+        ? unique(weakTopics).slice(0, 3)
+        : [getNoWeaknessMessageKey(quiz.levelId)],
+      weakAreasEmptyMessage: getNoWeaknessMessageKey(quiz.levelId),
       reviewTopics: unique(weakTopics).length ? unique(weakTopics) : ["You can progress to the next path or revisit the map for confidence."],
       timestamp: new Date().toISOString()
     };
@@ -2540,7 +2579,7 @@
     var idx = getUnitIndexInLevel(levelId, unitId);
     var num = getMapNodeNumber(chapterId, levelId, idx);
     var lvl = getLevel(levelId);
-    return num + " - " + (lvl ? lvl.name : levelId);
+    return num + " - " + (lvl ? tx(lvl.name) : levelId);
   }
 
   function getMapNodeNumber(chapterId, levelId, unitIndex) {
@@ -2824,47 +2863,57 @@
     if (question.type === "sort" && Array.isArray(cor)) {
       return cor.map(function (id) {
         var option = findQuestionOptionById(question, id);
-        return option ? getQuestionOptionLabel(option) : String(id);
+        return option ? tx(getQuestionOptionLabel(option)) : String(id);
       }).join(" \u2192 ");
     }
     if (question.type === "image") {
       for (var ii = 0; ii < opts.length; ii++) {
         if (opts[ii] && opts[ii].id === cor) {
-          return String.fromCharCode(65 + ii) + ". " + (opts[ii].label || cor);
+          return String.fromCharCode(65 + ii) + ". " + tx(opts[ii].label || cor);
         }
       }
       return String(cor);
     }
     for (var j = 0; j < opts.length; j++) {
       if (opts[j] === cor) {
-        return String.fromCharCode(65 + j) + ". " + opts[j];
+        return String.fromCharCode(65 + j) + ". " + tx(opts[j]);
       }
     }
     return String(cor);
   }
   function wrongAnswerFeedbackTitle(question) {
-    return "The correct answer is: " + formatCorrectAnswerForFeedback(question);
+    return tx("The correct answer is: ") + formatCorrectAnswerForFeedback(question);
   }
-  function buildMistakeReason(question) { return question.type === "sort" ? "The sequence needs another pass before the process feels automatic." : question.type === "image" ? "Review which visual option best supports the communication goal." : question.type === "true-false" ? "Slow down and check the principle hidden inside the statement." : "Revisit the key distinction in this topic before the next attempt."; }
+  function buildMistakeReason(question) {
+    return tx(
+      question.type === "sort"
+        ? "The sequence needs another pass before the process feels automatic."
+        : question.type === "image"
+          ? "Review which visual option best supports the communication goal."
+          : question.type === "true-false"
+            ? "Slow down and check the principle hidden inside the statement."
+            : "Revisit the key distinction in this topic before the next attempt."
+    );
+  }
 
   function renderImagePreview(option) {
     var preview = option && option.preview ? option.preview : null;
     if (!preview || !preview.type) {
-      return '<span class="quiz-image-option__preview quiz-image-option__preview--empty"><span class="quiz-image-option__placeholder">Preview missing</span></span>';
+      return '<span class="quiz-image-option__preview quiz-image-option__preview--empty"><span class="quiz-image-option__placeholder">' + tx("Preview missing") + "</span></span>";
     }
     if (preview.type === "text-on-bg") {
-      return '<span class="quiz-image-option__preview quiz-image-option__preview--text" style="background:' + (preview.background || "#ffffff") + ';color:' + (preview.color || "#0f172a") + ';"><span class="quiz-image-option__preview-copy">' + (preview.text || option.label || "Preview") + '</span><span class="quiz-image-option__preview-subcopy">' + (preview.subtext || "Read this sample") + '</span></span>';
+      return '<span class="quiz-image-option__preview quiz-image-option__preview--text" style="background:' + (preview.background || "#ffffff") + ';color:' + (preview.color || "#0f172a") + ';"><span class="quiz-image-option__preview-copy">' + (preview.text || option.label || tx("Preview")) + '</span><span class="quiz-image-option__preview-subcopy">' + tx(preview.subtext || "Read this sample") + '</span></span>';
     }
     if (preview.type === "bg") {
       return '<span class="quiz-image-option__preview quiz-image-option__preview--bg" style="background:' + (preview.background || "#e2e8f0") + ';"></span>';
     }
     if (preview.type === "image") {
       if (preview.src) {
-        return '<span class="quiz-image-option__preview quiz-image-option__preview--image"><img src="' + preview.src + '" alt="' + (preview.alt || option.label || "") + '" class="quiz-image-option__img"></span>';
+        return '<span class="quiz-image-option__preview quiz-image-option__preview--image"><img src="' + preview.src + '" alt="' + escapeAttr(preview.alt || option.label || "") + '" class="quiz-image-option__img"></span>';
       }
-      return '<span class="quiz-image-option__preview quiz-image-option__preview--image-empty" style="background:' + (preview.background || "#e2e8f0") + ';"><span class="quiz-image-option__placeholder">' + (preview.eyebrow || "Preview pending") + '</span></span>';
+      return '<span class="quiz-image-option__preview quiz-image-option__preview--image-empty" style="background:' + (preview.background || "#e2e8f0") + ';"><span class="quiz-image-option__placeholder">' + tx(preview.eyebrow || "Preview pending") + '</span></span>';
     }
-    return '<span class="quiz-image-option__preview quiz-image-option__preview--empty"><span class="quiz-image-option__placeholder">Unsupported preview</span></span>';
+    return '<span class="quiz-image-option__preview quiz-image-option__preview--empty"><span class="quiz-image-option__placeholder">' + tx("Unsupported preview") + "</span></span>";
   }
 
   function renderQuestionBody(question, draft, submitted) {
@@ -2874,7 +2923,7 @@
       return '<div class="quiz-image-options">' + opts.map(function (option) {
         var sel = draft === option.id;
         var cls = "quiz-image-option" + (sel ? " is-selected" : "");
-        return '<button type="button" class="' + cls + '"' + (isSubmitted ? ' disabled' : ' data-answer-value="' + option.id + '"') + '>' + renderImagePreview(option) + (option.hideLabel ? "" : '<strong class="quiz-image-option__label">' + option.label + "</strong>") + '</button>';
+        return '<button type="button" class="' + cls + '"' + (isSubmitted ? ' disabled' : ' data-answer-value="' + option.id + '"') + '>' + renderImagePreview(option) + (option.hideLabel ? "" : '<strong class="quiz-image-option__label">' + tx(option.label) + "</strong>") + '</button>';
       }).join("") + "</div>";
     }
     if (question.type === "sort") {
@@ -2885,11 +2934,11 @@
             var itemId = getQuestionOptionId(item);
             var itemLabel = getQuestionOptionLabel(item);
             if (item && typeof item === "object" && item.preview) {
-              return '<button type="button" class="quiz-image-option quiz-image-option--sort"' + (isSubmitted ? ' disabled' : ' data-sort-add="' + itemId + '"') + '>' + renderImagePreview(item) + (item.hideLabel ? "" : '<strong class="quiz-image-option__label">' + itemLabel + '</strong>') + '</button>';
+              return '<button type="button" class="quiz-image-option quiz-image-option--sort"' + (isSubmitted ? ' disabled' : ' data-sort-add="' + itemId + '"') + '>' + renderImagePreview(item) + (item.hideLabel ? "" : '<strong class="quiz-image-option__label">' + tx(itemLabel) + '</strong>') + '</button>';
             }
-            return '<button type="button" class="quiz-sort-chip"' + (isSubmitted ? ' disabled' : ' data-sort-add="' + itemId + '"') + '>' + itemLabel + '</button>';
+            return '<button type="button" class="quiz-sort-chip"' + (isSubmitted ? ' disabled' : ' data-sort-add="' + itemId + '"') + '>' + tx(itemLabel) + '</button>';
           }).join("")
-        : '<span class="quiz-sort-pool-empty">All items placed below</span>';
+        : '<span class="quiz-sort-pool-empty">' + tx("All items placed below") + '</span>';
       var rankHtml = question.correct.map(function (item, index) {
         var filled = !!selected[index];
         var selectedOption = filled ? findQuestionOptionById(question, selected[index]) : null;
@@ -2897,15 +2946,15 @@
         return '<div class="quiz-rank-row' + (filled ? ' is-filled' : '') + '">' +
           '<span class="quiz-rank-num">' + (index + 1) + '</span>' +
           (filled
-            ? '<span class="quiz-rank-label">' + selectedLabel + '</span>' +
-              (!isSubmitted ? '<button type="button" class="quiz-rank-remove" data-sort-remove="' + index + '" aria-label="Remove">\u00d7</button>' : '')
-            : '<span class="quiz-rank-placeholder">Click an item above to place it here</span>') +
+            ? '<span class="quiz-rank-label">' + tx(selectedLabel) + '</span>' +
+              (!isSubmitted ? '<button type="button" class="quiz-rank-remove" data-sort-remove="' + index + '" aria-label="' + escapeAttr(tx("Remove")) + '">\u00d7</button>' : '')
+            : '<span class="quiz-rank-placeholder">' + tx("Click an item above to place it here") + '</span>') +
         '</div>';
       }).join("");
       return '<div class="quiz-sort-shell">' +
         '<div class="quiz-sort-pool quiz-sort-pool--chips">' + poolHtml + '</div>' +
         '<div class="quiz-rank-list">' + rankHtml + '</div>' +
-        (!isSubmitted && selected.length > 0 ? '<button type="button" class="quiz-sort-reset" data-sort-reset>Reset order</button>' : '') +
+        (!isSubmitted && selected.length > 0 ? '<button type="button" class="quiz-sort-reset" data-sort-reset>' + tx("Reset order") + '</button>' : '') +
       '</div>';
     }
     return '<div class="quiz-options">' + opts.map(function (option, index) {
@@ -2913,22 +2962,22 @@
       var cls = "quiz-option" + (sel ? " is-selected" : "");
       return '<button type="button" class="' + cls + '"' + (isSubmitted ? ' disabled' : ' data-answer-value="' + option + '"') + '>' +
         '<span class="quiz-option__key">' + String.fromCharCode(65 + index) + '</span>' +
-        '<span class="quiz-option__copy">' + option + '</span>' +
+        '<span class="quiz-option__copy">' + tx(option) + '</span>' +
       '</button>';
     }).join("") + "</div>";
   }
 
   function renderHintBlock(question, quiz) {
     if (!quiz.revealedHints[question.id]) return "";
-    return '<div class="quiz-hint-block">' + IC.hint + '<div><strong>Hint</strong><p>' + question.hint + '</p><span class="quiz-hint-note">Using a hint reduces points available for this question.</span></div></div>';
+    return '<div class="quiz-hint-block">' + IC.hint + '<div><strong>' + tx("Hint") + '</strong><p>' + displayHintForQuestion(question) + '</p><span class="quiz-hint-note">' + tx("Using a hint reduces points available for this question.") + '</span></div></div>';
   }
   function renderFeedback(question, result) {
     var icon = result.isCorrect ? IC.correct : IC.wrong;
-    var title = result.isCorrect ? "Correct!" : wrongAnswerFeedbackTitle(question);
+    var title = result.isCorrect ? tx("Correct!") : wrongAnswerFeedbackTitle(question);
     return '<div class="quiz-feedback ' + (result.isCorrect ? "is-correct" : "is-wrong") + '">' +
       '<h2 class="quiz-feedback__title">' + icon + ' ' + title + '</h2>' +
-      '<p class="quiz-feedback__copy"><strong>Explanation:</strong> ' + question.explanation + '</p>' +
-      '<p class="quiz-feedback__copy"><strong>Knowledge point:</strong> ' + question.objective + '</p>' +
+      '<p class="quiz-feedback__copy"><strong>' + tx("Explanation:") + '</strong> ' + tx(question.explanation) + '</p>' +
+      '<p class="quiz-feedback__copy"><strong>' + tx("Knowledge point:") + '</strong> ' + tx(question.objective) + '</p>' +
     '</div>';
   }
   function renderMapNode(unit, index) {
@@ -2940,9 +2989,9 @@
       '<a class="test-map-node__card is-' + unit.status + '" style="' + style + '" href="' + unit.href + '">' +
         '<span class="test-map-node__button is-' + unit.status + '">' + starIcon + '</span>' +
         '<span class="test-map-node__body">' +
-          '<span class="test-map-node__eyebrow">' + unit.taskLabel + '</span>' +
+          '<span class="test-map-node__eyebrow">' + tx(unit.taskLabel) + '</span>' +
           '<h3 class="test-map-node__title">' + unit.label + '</h3>' +
-          (unit.focus ? '<p class="test-map-node__meta">' + unit.focus + '</p>' : '') +
+          (unit.focus ? '<p class="test-map-node__meta">' + tx(unit.focus) + '</p>' : '') +
         '</span>' +
         '<span class="test-map-node__star-rating">' + renderStarRating(unit.stars) + '</span>' +
       '</a>' +
@@ -2950,7 +2999,36 @@
   }
   function renderMistakeCard(mistake) {
     var explanationOpen = !!mistake.showExplanation;
-    return '<article class="mistake-card mistake-card--review"><div class="mistake-item__header"><div><div class="test-inline-meta"><span class="mistake-tag">' + getLevel(mistake.level).name + '</span><span class="mistake-tag">' + mistake.topic + '</span><span class="mistake-tag">' + (mistake.mastered ? "Reviewed" : "Pending") + '</span></div><h3 class="mistake-card__title">' + mistake.prompt + '</h3></div></div><div class="mistake-answer-panels"><div class="mistake-answer-panel is-wrong"><span class="mistake-answer-panel__label">Your answer</span><strong>' + getMistakeUserAnswer(mistake) + '</strong></div><div class="mistake-answer-panel is-correct"><span class="mistake-answer-panel__label">Correct answer</span><strong>' + getMistakeCorrectAnswer(mistake) + '</strong></div></div>' + (explanationOpen ? '<div class="mistake-explanation"><strong>Explanation:</strong> ' + mistake.correctConcept + '<br /><span class="test-card-copy">' + mistake.mistakeReason + '</span></div>' : "") + '<div class="mistake-item__footer"><div class="mistake-item__meta"><span>Attempts: ' + (mistake.attemptCount || 1) + '</span><span>Last attempt: ' + formatDate(mistake.lastWrongAt) + '</span></div><div class="mistake-item__controls"><button type="button" class="test-inline-btn" data-toggle-explanation="' + mistake.id + '">' + (explanationOpen ? "Hide explanation" : "View explanation") + '</button><button type="button" class="test-action test-action--primary" data-mark-mastered="' + mistake.id + '">' + (mistake.mastered ? "Mark as pending" : "Mark reviewed") + '</button></div></div></article>';
+    return (
+      '<article class="mistake-card mistake-card--review">' +
+        '<div class="mistake-item__header"><div><div class="test-inline-meta">' +
+          '<span class="mistake-tag">' + tx(getLevel(mistake.level).name) + '</span>' +
+          '<span class="mistake-tag">' + tx(mistake.topic) + '</span>' +
+          '<span class="mistake-tag">' + (mistake.mastered ? tx("Reviewed") : tx("Pending")) + '</span>' +
+        '</div><h3 class="mistake-card__title">' + tx(mistake.prompt) + '</h3></div></div>' +
+        '<div class="mistake-answer-panels">' +
+          '<div class="mistake-answer-panel is-wrong"><span class="mistake-answer-panel__label">' + tx("Your answer") + '</span><strong>' + txAnswerTrail(getMistakeUserAnswer(mistake)) + '</strong></div>' +
+          '<div class="mistake-answer-panel is-correct"><span class="mistake-answer-panel__label">' + tx("Correct answer") + '</span><strong>' + txAnswerTrail(getMistakeCorrectAnswer(mistake)) + '</strong></div>' +
+        "</div>" +
+        (explanationOpen
+          ? '<div class="mistake-explanation"><strong>' + tx("Explanation:") + '</strong> ' + tx(mistake.correctConcept) + '<br /><span class="test-card-copy">' + tx(mistake.mistakeReason) + "</span></div>"
+          : "") +
+        '<div class="mistake-item__footer">' +
+          '<div class="mistake-item__meta">' +
+            '<span>' + tx("Attempts:") + " " + (mistake.attemptCount || 1) + "</span>" +
+            '<span>' + tx("Last attempt:") + " " + formatDate(mistake.lastWrongAt) + "</span>" +
+          "</div>" +
+          '<div class="mistake-item__controls">' +
+            '<button type="button" class="test-inline-btn" data-toggle-explanation="' + mistake.id + '">' +
+              (explanationOpen ? tx("Hide explanation") : tx("View explanation")) +
+            "</button>" +
+            '<button type="button" class="test-action test-action--primary" data-mark-mastered="' + mistake.id + '">' +
+              (mistake.mastered ? tx("Mark as pending") : tx("Mark reviewed")) +
+            "</button>" +
+          "</div>" +
+        "</div>" +
+      "</article>"
+    );
   }
   function renderSidebarCard(title, inner, iconHtml, dockPanelId) {
     var head = iconHtml
@@ -2967,10 +3045,10 @@
     var bookmarkSvg = '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>';
     var dockAttr = dockPanelId ? ' data-map-dock-panel="' + dockPanelId + '" id="map-dock-panel-' + dockPanelId + '"' : "";
     return '<section class="test-sidebar-card"' + dockAttr + ">" +
-      '<h3 class="test-card-title test-card-title--with-icon"><span class="test-card-title__icon">' + IC.folderTitle + '</span><span class="test-card-title__text">Question Folder</span></h3>' +
+      '<h3 class="test-card-title test-card-title--with-icon"><span class="test-card-title__icon">' + IC.folderTitle + '</span><span class="test-card-title__text">' + tx("Question Folder") + '</span></h3>' +
       '<div class="review-btn-row">' +
-        '<a class="review-btn review-btn--mistakes" href="' + mistakesUrl + '">' + mistakeSvg + '<span>Mistakes</span></a>' +
-        '<a class="review-btn review-btn--saved" href="' + savedUrl + '">' + bookmarkSvg + '<span>Bookmarked</span></a>' +
+        '<a class="review-btn review-btn--mistakes" href="' + mistakesUrl + '">' + mistakeSvg + '<span>' + tx("Mistakes") + '</span></a>' +
+        '<a class="review-btn review-btn--saved" href="' + savedUrl + '">' + bookmarkSvg + '<span>' + tx("Bookmarked") + '</span></a>' +
       '</div>' +
     '</section>';
   }
@@ -3003,22 +3081,22 @@
     var trophySvg = '<svg viewBox="0 0 24 24" aria-hidden="true" width="30" height="30" fill="currentColor"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94.63 1.5 1.98 2.63 3.61 2.96V19H9v2h6v-2h-2v-2.1c1.63-.33 2.98-1.46 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v2.83C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z"/></svg>';
     var dockAttr = dockPanelId ? ' data-map-dock-panel="' + dockPanelId + '" id="map-dock-panel-' + dockPanelId + '"' : "";
     return '<section class="test-sidebar-card" data-rewards-card' + dockAttr + ">" +
-      '<h3 class="test-card-title test-card-title--with-icon"><span class="test-card-title__icon">' + IC.rewardsTitle + '</span><span class="test-card-title__text">Rewards</span></h3>' +
+      '<h3 class="test-card-title test-card-title--with-icon"><span class="test-card-title__icon">' + IC.rewardsTitle + '</span><span class="test-card-title__text">' + tx("Rewards") + '</span></h3>' +
       '<div class="reward-grid">' +
         '<div class="reward-item">' +
           '<div class="reward-item__icon reward-item__icon--star">' + starSvg + '</div>' +
           '<strong class="reward-item__value">' + getTotalBestStarsEarned() + '</strong>' +
-          '<span class="reward-item__label">Stars</span>' +
+          '<span class="reward-item__label">' + tx("Stars") + '</span>' +
         '</div>' +
         '<div class="reward-item">' +
           '<div class="reward-item__icon reward-item__icon--streak">' + flameSvg + '</div>' +
           '<strong class="reward-item__value">' + state.rewards.streak + '</strong>' +
-          '<span class="reward-item__label">Max streak</span>' +
+          '<span class="reward-item__label">' + tx("Max streak") + '</span>' +
         '</div>' +
         '<div class="reward-item">' +
           '<div class="reward-item__icon reward-item__icon--score">' + trophySvg + '</div>' +
           '<strong class="reward-item__value">' + (totalScore || 0) + '</strong>' +
-          '<span class="reward-item__label">Total pts</span>' +
+          '<span class="reward-item__label">' + tx("Total pts") + '</span>' +
         '</div>' +
       '</div>' +
       (state.rewards.badges.length
@@ -3033,7 +3111,7 @@
                 '">' +
                 rewardBadgeMiniSvgHtml() +
                 '<span class="reward-badge-tag__lbl">' +
-                b +
+                tx(b) +
                 "</span></button>"
               );
             }).join('') +
@@ -3042,9 +3120,10 @@
     '</section>';
   }
   function renderResultsCard(title, inner, iconHtml) {
+    var t = tx(title);
     var head = iconHtml
-      ? '<h2 class="results-card__title results-card__title--with-icon"><span class="results-card__title-icon">' + iconHtml + '</span><span class="results-card__title-text">' + title + "</span></h2>"
-      : '<h2 class="results-card__title">' + title + "</h2>";
+      ? '<h2 class="results-card__title results-card__title--with-icon"><span class="results-card__title-icon">' + iconHtml + '</span><span class="results-card__title-text">' + t + "</span></h2>"
+      : '<h2 class="results-card__title">' + t + "</h2>";
     return "<section class=\"results-card\">" + head + inner + "</section>";
   }
   function playSfx(src, opts) {
@@ -3086,11 +3165,11 @@
   function renderChoiceChip(label, attrs, active) { return '<button type="button" class="test-chip' + (active ? " is-active" : "") + '" ' + attrs + ">" + label + "</button>"; }
   function renderLinkButton(label, href, extraClass) { var disabled = extraClass && extraClass.indexOf("is-disabled") !== -1; return '<a class="test-link-btn ' + (extraClass || "") + '" href="' + (disabled ? "#" : href) + '"' + (disabled ? ' aria-disabled="true"' : "") + ">" + label + "</a>"; }
   function renderActionButton(label, action, disabled, locked) { return '<button type="button" class="' + (action === "next" ? "test-action test-action--primary" : "test-action test-action--soft") + '" data-quiz-action="' + action + '"' + (disabled || locked ? " disabled" : "") + ">" + label + "</button>"; }
-  function renderMapChapterSelect(current) { return '<select class="test-map-topbar__select" data-map-select="chapter">' + CHAPTERS.map(function (item, index) { return '<option value="' + item.id + '"' + (current === item.id ? " selected" : "") + ">" + (index + 1) + ". " + item.name + "</option>"; }).join("") + "</select>"; }
-  function renderMapLevelSelect(current) { return '<select class="test-map-topbar__select" data-map-select="level">' + LEVELS.map(function (item) { return '<option value="' + item.id + '"' + (current === item.id ? " selected" : "") + ">" + item.name + "</option>"; }).join("") + "</select>"; }
-  function renderChapterFilter(current) { return '<select class="test-map-topbar__select" id="mistake-chapter" data-mistake-filter="chapter"><option value="all"' + (current === "all" ? " selected" : "") + '>All Chapters</option>' + CHAPTERS.map(function (item, index) { return '<option value="' + item.id + '"' + (current === item.id ? " selected" : "") + ">" + (index + 1) + ". " + item.name + "</option>"; }).join("") + "</select>"; }
-  function renderLevelFilter(current) { return '<select class="test-map-topbar__select" id="mistake-level" data-mistake-filter="level"><option value="all"' + (current === "all" ? " selected" : "") + '>All Levels</option>' + LEVELS.map(function (item) { return '<option value="' + item.id + '"' + (current === item.id ? " selected" : "") + ">" + item.name + "</option>"; }).join("") + "</select>"; }
-  function renderStatusFilter(current) { return '<select class="test-map-topbar__select" id="mistake-status" data-mistake-filter="status"><option value="all"' + (current === "all" ? " selected" : "") + '>All Status</option><option value="pending"' + (current === "pending" ? " selected" : "") + '>Pending</option><option value="reviewed"' + (current === "reviewed" ? " selected" : "") + '>Reviewed</option></select>'; }
+  function renderMapChapterSelect(current) { return '<select class="test-map-topbar__select" data-map-select="chapter">' + CHAPTERS.map(function (item, index) { return '<option value="' + item.id + '"' + (current === item.id ? " selected" : "") + ">" + (index + 1) + ". " + tx(item.name) + "</option>"; }).join("") + "</select>"; }
+  function renderMapLevelSelect(current) { return '<select class="test-map-topbar__select" data-map-select="level">' + LEVELS.map(function (item) { return '<option value="' + item.id + '"' + (current === item.id ? " selected" : "") + ">" + tx(item.name) + "</option>"; }).join("") + "</select>"; }
+  function renderChapterFilter(current) { return '<select class="test-map-topbar__select" id="mistake-chapter" data-mistake-filter="chapter"><option value="all"' + (current === "all" ? " selected" : "") + '>' + tx("All Chapters") + '</option>' + CHAPTERS.map(function (item, index) { return '<option value="' + item.id + '"' + (current === item.id ? " selected" : "") + ">" + (index + 1) + ". " + tx(item.name) + "</option>"; }).join("") + "</select>"; }
+  function renderLevelFilter(current) { return '<select class="test-map-topbar__select" id="mistake-level" data-mistake-filter="level"><option value="all"' + (current === "all" ? " selected" : "") + '>' + tx("All Levels") + '</option>' + LEVELS.map(function (item) { return '<option value="' + item.id + '"' + (current === item.id ? " selected" : "") + ">" + tx(item.name) + "</option>"; }).join("") + "</select>"; }
+  function renderStatusFilter(current) { return '<select class="test-map-topbar__select" id="mistake-status" data-mistake-filter="status"><option value="all"' + (current === "all" ? " selected" : "") + '>' + tx("All Status") + '</option><option value="pending"' + (current === "pending" ? " selected" : "") + '>' + tx("Pending") + '</option><option value="reviewed"' + (current === "reviewed" ? " selected" : "") + '>' + tx("Reviewed") + '</option></select>'; }
   function getMistakeChapterFilter() { var params = getParams(); return params.chapter && getChapter(params.chapter) ? params.chapter : "all"; }
   function getMistakeLevelFilter() { var params = getParams(); return params.level && getLevel(params.level) ? params.level : "all"; }
   function getMistakeStatusFilter() { var params = getParams(); return params.status === "pending" || params.status === "reviewed" ? params.status : "all"; }
@@ -3160,10 +3239,10 @@
 
   function renderMistakesToolbar(chapterFilter, levelFilter, statusFilter) {
     return '<div class="mistakes-toolbar">' +
-      '<div class="test-map-topbar__field"><span>Chapter</span>' + renderChapterFilter(chapterFilter) + '</div>' +
-      '<div class="test-map-topbar__field"><span>Difficulty</span>' + renderLevelFilter(levelFilter) + '</div>' +
+      '<div class="test-map-topbar__field"><span>' + tx("Chapter") + '</span>' + renderChapterFilter(chapterFilter) + '</div>' +
+      '<div class="test-map-topbar__field"><span>' + tx("Difficulty") + '</span>' + renderLevelFilter(levelFilter) + '</div>' +
       (statusFilter !== null && statusFilter !== undefined
-        ? '<div class="test-map-topbar__field"><span>Status</span>' + renderStatusFilter(statusFilter) + '</div>'
+        ? '<div class="test-map-topbar__field"><span>' + tx("Status") + '</span>' + renderStatusFilter(statusFilter) + '</div>'
         : '') +
     '</div>';
   }
@@ -3172,9 +3251,9 @@
     var chObj = getChapter(mistake.chapter);
     var unitIdx = Math.max(0, (Number((mistake.unit || "unit-1").split("-")[1]) || 1) - 1);
     var nodeNum = getMapNodeNumber(mistake.chapter, mistake.level, unitIdx);
-    var chapterName = chObj ? chObj.name : mistake.chapter;
+    var chapterName = chObj ? tx(chObj.name) : mistake.chapter;
     var lvObj = getLevel(mistake.level);
-    var levelName = lvObj ? lvObj.name : mistake.level;
+    var levelName = lvObj ? tx(lvObj.name) : mistake.level;
     var chColor = chObj ? chObj.colors.primary : "";
     var chBorder = chObj ? chObj.colors.border : "";
     return (
@@ -3182,16 +3261,16 @@
         (chBorder ? ' style="border-color:' + chBorder + '"' : '') + '>' +
         '<div class="mcc__meta">' +
           '<span class="mcc__source"' + (chColor ? ' style="color:' + chColor + '"' : '') + '>' + chapterName + ' \xb7 ' + nodeNum + '</span>' +
-          '<span class="mcc__status-tag' + (mistake.mastered ? " is-ok" : "") + '">' + (mistake.mastered ? "Reviewed" : "Pending") + '</span>' +
+          '<span class="mcc__status-tag' + (mistake.mastered ? " is-ok" : "") + '">' + (mistake.mastered ? tx("Reviewed") : tx("Pending")) + '</span>' +
         '</div>' +
-        '<p class="mcc__prompt">' + mistake.prompt + '</p>' +
+        '<p class="mcc__prompt">' + tx(mistake.prompt) + '</p>' +
         '<div class="mcc__tags">' +
           '<span class="mcc__level-badge">' + levelName + '</span>' +
           '<span class="mcc__type-tag">' + labelForType(mistake.questionType || "mcq") + '</span>' +
         '</div>' +
         '<div class="mcc__footer">' +
           '<span class="mcc__date">' + (mistake.attemptCount > 1 ? '\xd7' + mistake.attemptCount + ' \xb7 ' : '') + formatDateTime(mistake.lastWrongAt) + '</span>' +
-          '<button type="button" class="test-inline-btn mcc__btn mcc__btn--practice" data-practice-question="' + mistake.id + '" data-practice-type="mistake">Practice</button>' +
+          '<button type="button" class="test-inline-btn mcc__btn mcc__btn--practice" data-practice-question="' + mistake.id + '" data-practice-type="mistake">' + tx("Practice") + '</button>' +
         '</div>' +
       '</article>'
     );
@@ -3201,9 +3280,9 @@
     var chObj = getChapter(item.chapter);
     var unitIdx = Math.max(0, (Number((item.unit || "unit-1").split("-")[1]) || 1) - 1);
     var nodeNum = getMapNodeNumber(item.chapter, item.level, unitIdx);
-    var chapterName = chObj ? chObj.name : item.chapter;
+    var chapterName = chObj ? tx(chObj.name) : item.chapter;
     var lvObj = getLevel(item.level);
-    var levelName = lvObj ? lvObj.name : item.level;
+    var levelName = lvObj ? tx(lvObj.name) : item.level;
     var q = item.questionSnapshot || {};
     var chColor = chObj ? chObj.colors.primary : "";
     var chBorder = chObj ? chObj.colors.border : "";
@@ -3213,7 +3292,7 @@
         '<div class="mcc__meta">' +
           '<span class="mcc__source"' + (chColor ? ' style="color:' + chColor + '"' : '') + '>' + chapterName + ' \xb7 ' + nodeNum + '</span>' +
         '</div>' +
-        '<p class="mcc__prompt">' + (q.prompt || '\u2014') + '</p>' +
+        '<p class="mcc__prompt">' + (q.prompt ? tx(q.prompt) : "\u2014") + '</p>' +
         '<div class="mcc__tags">' +
           '<span class="mcc__level-badge">' + levelName + '</span>' +
           '<span class="mcc__type-tag">' + labelForType(q.type || "mcq") + '</span>' +
@@ -3221,8 +3300,8 @@
         '<div class="mcc__footer">' +
           '<span class="mcc__date">' + formatDateTime(item.flaggedAt) + '</span>' +
           '<div class="mcc__btns">' +
-            '<button type="button" class="test-inline-btn mcc__btn mcc__btn--unbookmark" data-unflag-question="' + item.questionId + '">Remove</button>' +
-            '<button type="button" class="test-inline-btn mcc__btn mcc__btn--practice" data-practice-question="' + item.questionId + '" data-practice-type="flagged">Practice</button>' +
+            '<button type="button" class="test-inline-btn mcc__btn mcc__btn--unbookmark" data-unflag-question="' + item.questionId + '">' + tx("Remove") + '</button>' +
+            '<button type="button" class="test-inline-btn mcc__btn mcc__btn--practice" data-practice-question="' + item.questionId + '" data-practice-type="flagged">' + tx("Practice") + '</button>' +
           '</div>' +
         '</div>' +
       '</article>'
@@ -3243,11 +3322,11 @@
     var btns = [];
     var prevPage = currentPage > 1 ? currentPage - 1 : 0;
     var nextPage = currentPage < totalPages ? currentPage + 1 : 0;
-    btns.push(prevPage ? '<a class="mpg-btn mpg-btn--nav" href="' + mkUrl(prevPage) + '" aria-label="Previous page">\u2039</a>' : '<span class="mpg-btn mpg-btn--nav is-disabled">\u2039</span>');
+    btns.push(prevPage ? '<a class="mpg-btn mpg-btn--nav" href="' + mkUrl(prevPage) + '" aria-label="' + escapeAttr(tx("Previous page")) + '">\u2039</a>' : '<span class="mpg-btn mpg-btn--nav is-disabled">\u2039</span>');
     for (var pi = 1; pi <= totalPages; pi++) {
       btns.push('<a class="mpg-btn' + (pi === currentPage ? " is-active" : "") + '" href="' + mkUrl(pi) + '">' + pi + '</a>');
     }
-    btns.push(nextPage ? '<a class="mpg-btn mpg-btn--nav" href="' + mkUrl(nextPage) + '" aria-label="Next page">\u203a</a>' : '<span class="mpg-btn mpg-btn--nav is-disabled">\u203a</span>');
+    btns.push(nextPage ? '<a class="mpg-btn mpg-btn--nav" href="' + mkUrl(nextPage) + '" aria-label="' + escapeAttr(tx("Next page")) + '">\u203a</a>' : '<span class="mpg-btn mpg-btn--nav is-disabled">\u203a</span>');
     return '<div class="mistakes-pagination">' + btns.join("") + '</div>';
   }
 
@@ -3377,8 +3456,8 @@
     }
 
     var emptyMain = !item
-      ? '<div class="solo-panel solo-panel--empty"><p>No questions match the current filters.</p>' +
-          '<button type="button" class="solo-exit-btn" data-solo-action="exit">\u2190 Back to folder</button>' +
+      ? '<div class="solo-panel solo-panel--empty"><p>' + tx("No questions match the current filters.") + '</p>' +
+          '<button type="button" class="solo-exit-btn" data-solo-action="exit">\u2190 ' + tx("Back to folder") + '</button>' +
         '</div>'
       : renderSoloLeft(item, type);
 
@@ -3411,9 +3490,9 @@
     var chObj = getChapter(item.chapter);
     var unitIdx = Math.max(0, (Number((item.unit || "unit-1").split("-")[1]) || 1) - 1);
     var nodeNum = getMapNodeNumber(item.chapter, item.level, unitIdx);
-    var chapterName = chObj ? chObj.name : item.chapter;
+    var chapterName = chObj ? tx(chObj.name) : item.chapter;
     var lvObj = getLevel(item.level);
-    var levelName = lvObj ? lvObj.name : item.level;
+    var levelName = lvObj ? tx(lvObj.name) : item.level;
     var chColor = chObj ? chObj.colors.primary : "";
     var draft = soloState.draft;
     var submitted = soloState.submitted;
@@ -3422,18 +3501,18 @@
     var feedbackHtml = "";
     if (submitted) {
       var icon = soloState.isCorrect ? IC.correct : IC.wrong;
-      var fbTitle = soloState.isCorrect ? "Correct!" : wrongAnswerFeedbackTitle(question);
+      var fbTitle = soloState.isCorrect ? tx("Correct!") : wrongAnswerFeedbackTitle(question);
       var fbCls = soloState.isCorrect ? "is-correct" : "is-wrong";
       feedbackHtml =
         '<div class="quiz-feedback ' + fbCls + '">' +
           '<h2 class="quiz-feedback__title">' + icon + ' ' + fbTitle + '</h2>' +
-          '<p class="quiz-feedback__copy"><strong>Explanation:</strong> ' + question.explanation + '</p>' +
-          '<p class="quiz-feedback__copy"><strong>Knowledge point:</strong> ' + question.objective + '</p>' +
+          '<p class="quiz-feedback__copy"><strong>' + tx("Explanation:") + '</strong> ' + tx(question.explanation) + '</p>' +
+          '<p class="quiz-feedback__copy"><strong>' + tx("Knowledge point:") + '</strong> ' + tx(question.objective) + '</p>' +
           (type === "mistake" && soloState.isCorrect
-            ? '<p class="quiz-feedback__copy solo-feedback__mastered">\u2713 Marked as Reviewed in your mistake list.</p>'
+            ? '<p class="quiz-feedback__copy solo-feedback__mastered">\u2713 ' + tx("Marked as Reviewed in your mistake list.") + '</p>'
             : '') +
           (type === "flagged" && !soloState.isCorrect
-            ? '<p class="quiz-feedback__copy solo-feedback__added">\u26a0\ufe0f Added to your mistake list.</p>'
+            ? '<p class="quiz-feedback__copy solo-feedback__added">\u26a0\ufe0f ' + tx("Added to your mistake list.") + '</p>'
             : '') +
         '</div>';
     }
@@ -3445,16 +3524,16 @@
         '</span>' +
         '<span class="mcc__level-badge">' + levelName + '</span>' +
         (type === "mistake" && !submitted
-          ? '<span class="mcc__status-tag' + (item.mastered ? ' is-ok' : '') + '">' + (item.mastered ? 'Reviewed' : 'Pending') + '</span>'
+          ? '<span class="mcc__status-tag' + (item.mastered ? ' is-ok' : '') + '">' + (item.mastered ? tx('Reviewed') : tx('Pending')) + '</span>'
           : '') +
       '</div>' +
-      '<h2 class="solo-panel__prompt">' + question.prompt + '</h2>' +
+      '<h2 class="solo-panel__prompt">' + tx(question.prompt) + '</h2>' +
       renderSoloQuestionBody(question, draft, submitted) +
       feedbackHtml +
       '<div class="solo-panel__actions">' +
-        '<button type="button" class="solo-exit-btn" data-solo-action="exit">\u2190 Back to folder</button>' +
+        '<button type="button" class="solo-exit-btn" data-solo-action="exit">\u2190 ' + tx("Back to folder") + '</button>' +
         (!submitted
-          ? '<button type="button" class="quiz-nav-btn is-next solo-panel__submit" data-solo-action="submit"' + (canSubmit ? '' : ' disabled') + '>' + IC.submit + ' Submit</button>'
+          ? '<button type="button" class="quiz-nav-btn is-next solo-panel__submit" data-solo-action="submit"' + (canSubmit ? '' : ' disabled') + '>' + IC.submit + ' ' + tx("Submit") + '</button>'
           : '') +
       '</div>' +
     '</div>';
@@ -3466,28 +3545,28 @@
       return '<div class="quiz-image-options">' + opts.map(function (option) {
         var sel = draft === option.id;
         var cls = "quiz-image-option" + (sel ? " is-selected" : "");
-        return '<button type="button" class="' + cls + '"' + (submitted ? ' disabled' : ' data-solo-answer="' + option.id + '"') + '>' + renderImagePreview(option) + '<strong class="quiz-image-option__label">' + option.label + '</strong></button>';
+        return '<button type="button" class="' + cls + '"' + (submitted ? ' disabled' : ' data-solo-answer="' + option.id + '"') + '>' + renderImagePreview(option) + '<strong class="quiz-image-option__label">' + tx(option.label) + '</strong></button>';
       }).join("") + "</div>";
     }
     if (question.type === "sort") {
       var selected = Array.isArray(draft) ? draft : [];
       var remaining = opts.filter(function (item) { return selected.indexOf(item) === -1; });
       var poolHtml = remaining.length
-        ? remaining.map(function (item) { return '<button type="button" class="quiz-sort-chip"' + (submitted ? ' disabled' : ' data-solo-sort-add="' + item + '"') + '>' + item + '</button>'; }).join("")
-        : '<span class="quiz-sort-pool-empty">All items placed below</span>';
+        ? remaining.map(function (item) { return '<button type="button" class="quiz-sort-chip"' + (submitted ? ' disabled' : ' data-solo-sort-add="' + item + '"') + '>' + tx(item) + '</button>'; }).join("")
+        : '<span class="quiz-sort-pool-empty">' + tx("All items placed below") + '</span>';
       var rankHtml = question.correct.map(function (item, index) {
         var filled = !!selected[index];
         return '<div class="quiz-rank-row' + (filled ? ' is-filled' : '') + '">' +
           '<span class="quiz-rank-num">' + (index + 1) + '</span>' +
           (filled
-            ? '<span class="quiz-rank-label">' + selected[index] + '</span>' + (!submitted ? '<button type="button" class="quiz-rank-remove" data-solo-sort-remove="' + index + '" aria-label="Remove">\u00d7</button>' : '')
-            : '<span class="quiz-rank-placeholder">Click an item above to place it here</span>') +
+            ? '<span class="quiz-rank-label">' + tx(selected[index]) + '</span>' + (!submitted ? '<button type="button" class="quiz-rank-remove" data-solo-sort-remove="' + index + '" aria-label="' + escapeAttr(tx("Remove")) + '">\u00d7</button>' : '')
+            : '<span class="quiz-rank-placeholder">' + tx("Click an item above to place it here") + '</span>') +
         '</div>';
       }).join("");
       return '<div class="quiz-sort-shell">' +
         '<div class="quiz-sort-pool quiz-sort-pool--chips">' + poolHtml + '</div>' +
         '<div class="quiz-rank-list">' + rankHtml + '</div>' +
-        (!submitted && selected.length > 0 ? '<button type="button" class="quiz-sort-reset" data-solo-sort-reset>Reset order</button>' : '') +
+        (!submitted && selected.length > 0 ? '<button type="button" class="quiz-sort-reset" data-solo-sort-reset>' + tx("Reset order") + '</button>' : '') +
       '</div>';
     }
     /* true-false and MCQ — mirrors renderQuestionBody exactly */
@@ -3496,23 +3575,23 @@
       var cls = "quiz-option" + (sel ? " is-selected" : "");
       return '<button type="button" class="' + cls + '"' + (submitted ? ' disabled' : ' data-solo-answer="' + option + '"') + '>' +
         '<span class="quiz-option__key">' + String.fromCharCode(65 + index) + '</span>' +
-        '<span class="quiz-option__copy">' + option + '</span>' +
+        '<span class="quiz-option__copy">' + tx(option) + '</span>' +
       '</button>';
     }).join("") + "</div>";
   }
 
   function renderSoloRight(currentId, tab, listItems, type) {
     if (!listItems.length) {
-      return '<div class="solo-list"><p class="solo-list__empty">No questions match the filter.</p></div>';
+      return '<div class="solo-list"><p class="solo-list__empty">' + tx("No questions match the filter.") + '</p></div>';
     }
     var itemsHtml = listItems.map(function (li) {
       var id = tab === "flagged" ? li.questionId : li.id;
       var q = li.questionSnapshot || {};
-      var prompt = tab === "flagged" ? (q.prompt || "\u2014") : li.prompt;
+      var prompt = tab === "flagged" ? (q.prompt ? tx(q.prompt) : "\u2014") : tx(li.prompt);
       var isActive = id === currentId;
       var chObj = getChapter(li.chapter);
       var chColor = chObj ? chObj.colors.primary : "#94a3b8";
-      var statusLabel = tab === "flagged" ? "Bookmarked" : (li.mastered ? "Reviewed" : "Pending");
+      var statusLabel = tab === "flagged" ? tx("Bookmarked") : (li.mastered ? tx("Reviewed") : tx("Pending"));
       var statusCls = tab === "flagged" ? "is-flagged" : (li.mastered ? "is-ok" : "");
       return '<button type="button" class="solo-list__item' + (isActive ? ' is-active' : '') + '"' +
         ' data-solo-select="' + id + '" data-solo-select-type="' + type + '">' +
@@ -3522,7 +3601,7 @@
       '</button>';
     }).join("");
     return '<div class="solo-list">' +
-      '<div class="solo-list__header">In this filter &nbsp;<strong>' + listItems.length + '</strong></div>' +
+      '<div class="solo-list__header">' + tx("In this filter") + " &nbsp;<strong>" + listItems.length + "</strong></div>" +
       '<div class="solo-list__scroll">' + itemsHtml + '</div>' +
     '</div>';
   }
@@ -3567,18 +3646,18 @@
   function renderLearnTopicList(topics) {
     var list = Array.isArray(topics) && topics.length ? topics : [{ label: "Overview", href: "learning.html#overview" }];
     return '<div class="test-learn-rows">' + list.map(function (item) {
-      return '<a class="test-learn-row" href="' + item.href + '"><span class="test-learn-row__label">' + item.label + '</span><span class="test-learn-row__arrow" aria-hidden="true"></span></a>';
+      return '<a class="test-learn-row" href="' + item.href + '"><span class="test-learn-row__label">' + tx(item.label) + '</span><span class="test-learn-row__arrow" aria-hidden="true"></span></a>';
     }).join("") + '</div>';
   }
   function renderResultInsightContent(items, emptyMessage) {
     if (!Array.isArray(items) || !items.length) {
-      return '<p class="test-card-copy">' + emptyMessage + "</p>";
+      return '<p class="test-card-copy">' + tx(emptyMessage) + "</p>";
     }
     if (items.length === 1 && items[0] === emptyMessage) {
-      return '<p class="test-card-copy">' + emptyMessage + "</p>";
+      return '<p class="test-card-copy">' + tx(emptyMessage) + "</p>";
     }
     return '<ul class="test-note-list">' + items.map(function (item) {
-      return "<li>" + item + "</li>";
+      return "<li>" + tx(item) + "</li>";
     }).join("") + "</ul>";
   }
   function getVisibleMistakes(chapterId, levelId, status) { return state.mistakes.filter(function (item) { var chapterMatch = !chapterId || chapterId === "all" || item.chapter === chapterId; var levelMatch = !levelId || levelId === "all" || item.level === levelId; var statusMatch = !status || status === "all" || (status === "reviewed" ? item.mastered : !item.mastered); return chapterMatch && levelMatch && statusMatch; }); }
@@ -3589,10 +3668,20 @@
   function hexToHsl(hex) { var rgb = hexToRgb(hex); var r = rgb.r / 255; var g = rgb.g / 255; var b = rgb.b / 255; var max = Math.max(r, g, b); var min = Math.min(r, g, b); var h; var s; var l = (max + min) / 2; if (max === min) { h = 0; s = 0; } else { var d = max - min; s = l > 0.5 ? d / (2 - max - min) : d / (max + min); if (max === r) h = (g - b) / d + (g < b ? 6 : 0); else if (max === g) h = (b - r) / d + 2; else h = (r - g) / d + 4; h /= 6; } return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) }; }
   function hslToHex(h, s, l) { var hue = ((h % 360) + 360) % 360 / 360; var sat = clamp(s, 0, 100) / 100; var light = clamp(l, 0, 100) / 100; var r; var g; var b; if (sat === 0) { r = g = b = light; } else { var hueToRgb = function (p, q, t) { if (t < 0) t += 1; if (t > 1) t -= 1; if (t < 1 / 6) return p + (q - p) * 6 * t; if (t < 1 / 2) return q; if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6; return p; }; var q = light < 0.5 ? light * (1 + sat) : light + sat - light * sat; var p = 2 * light - q; r = hueToRgb(p, q, hue + 1 / 3); g = hueToRgb(p, q, hue); b = hueToRgb(p, q, hue - 1 / 3); } return rgbToHex(Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)); }
   function clamp(value, min, max) { return Math.min(max, Math.max(min, value)); }
-  function labelForType(type) { return type === "true-false" ? "True / False" : type === "image" ? "Image Choice" : type === "sort" ? "Sort" : "MCQ"; }
-  function formatDate(value) { try { return value ? new Date(value).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "Not yet"; } catch (e) { return value; } }
+  function labelForType(type) {
+    return tx(type === "true-false" ? "True / False" : type === "image" ? "Image Choice" : type === "sort" ? "Sort" : "MCQ");
+  }
+  function formatDate(value) {
+    try {
+      if (!value) return tx("Not yet");
+      var zh = window.CLWLocale && CLWLocale.getLocale && CLWLocale.getLocale() === "zh";
+      return new Date(value).toLocaleDateString(zh ? "zh-CN" : undefined, { month: "short", day: "numeric" });
+    } catch (e) {
+      return value;
+    }
+  }
   function unique(items) { return items.filter(function (item, index) { return item && items.indexOf(item) === index; }); }
-  function formatDateTime(value) { try { if (!value) return ""; var d = new Date(value); return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) + " " + d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }); } catch (e) { return value || ""; } }
+  function formatDateTime(value) { try { if (!value) return ""; var d = new Date(value); var zh = window.CLWLocale && CLWLocale.getLocale && CLWLocale.getLocale() === "zh"; var loc = zh ? "zh-CN" : "en-GB"; return d.toLocaleDateString(loc, { day: "numeric", month: "short", year: "numeric" }) + " " + d.toLocaleTimeString(loc, { hour: "2-digit", minute: "2-digit" }); } catch (e) { return value || ""; } }
   function shouldRunQuizTimer(quiz) {
     return !!(quiz && !quiz.browseOnly && quiz.mode !== "review");
   }

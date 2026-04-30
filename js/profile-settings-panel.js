@@ -134,10 +134,6 @@
       '        <path d="M16.4 10.4L20.6 10.6L20.4 6.4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
       '      </svg>' +
       '      Reset to defaults' +
-      '    </button>' +
-      '    <button type="button" class="profile-settings-footer__save" data-profile-settings-save>' +
-      '      <span class="profile-settings-footer__save-icon" aria-hidden="true">✓</span>' +
-      "      Save changes" +
       "    </button>" +
       "  </footer>" +
       "</div>"
@@ -220,6 +216,12 @@
     });
   }
 
+  function syncLocaleFromCLW() {
+    if (window.CLWLocale && typeof CLWLocale.getLocale === "function") {
+      prefState.language = CLWLocale.getLocale();
+    }
+  }
+
   function resetPrefs() {
     prefState.soundEffects = defaults.soundEffects;
     prefState.language = defaults.language;
@@ -227,6 +229,9 @@
     prefState.fontSize = defaults.fontSize;
     if (window.CLWSound && typeof CLWSound.setSoundEffectsEnabled === "function") {
       CLWSound.setSoundEffectsEnabled(defaults.soundEffects);
+    }
+    if (window.CLWLocale && typeof CLWLocale.setLocale === "function") {
+      CLWLocale.setLocale(defaults.language);
     }
     applyPrefStateToDom();
   }
@@ -270,6 +275,7 @@
     }
     refreshProfileCard();
     syncSoundFromCLW();
+    syncLocaleFromCLW();
     applyPrefStateToDom();
     if (closeBtn) closeBtn.focus();
   }
@@ -334,6 +340,9 @@
         var val = seg.getAttribute("data-clw-pref-value");
         if (key === "language" && (val === "zh" || val === "en")) {
           prefState.language = val;
+          if (window.CLWLocale && typeof CLWLocale.setLocale === "function") {
+            CLWLocale.setLocale(val);
+          }
         } else if (key === "colour-mode" && (val === "default" || val === "accessible")) {
           prefState.colourMode = val;
         } else if (key === "font-size" && (val === "s" || val === "m" || val === "l")) {
@@ -343,15 +352,6 @@
       }
       if (t.closest("[data-profile-settings-reset]")) {
         resetPrefs();
-      }
-      if (t.closest("[data-profile-settings-save]")) {
-        var save = t.closest("[data-profile-settings-save]");
-        if (save) {
-          save.classList.add("is-pressed");
-          window.setTimeout(function () {
-            save.classList.remove("is-pressed");
-          }, 160);
-        }
       }
       if (t.closest("[data-profile-settings-login]")) {
         closePanel();
@@ -398,6 +398,7 @@
     bindTrigger();
     refreshProfileCard();
     syncSoundFromCLW();
+    syncLocaleFromCLW();
     applyPrefStateToDom();
   }
 
@@ -405,7 +406,15 @@
   document.addEventListener("clw:auth-changed", function () {
     refreshProfileCard();
     syncSoundFromCLW();
+    syncLocaleFromCLW();
     applyPrefStateToDom();
+  });
+  document.addEventListener("clw:locale-changed", function (ev) {
+    var loc = ev.detail && ev.detail.locale;
+    if (loc === "zh" || loc === "en") {
+      prefState.language = loc;
+      applyPrefStateToDom();
+    }
   });
   document.addEventListener("clw:sound-prefs-changed", function () {
     syncSoundFromCLW();
