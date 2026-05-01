@@ -36,6 +36,7 @@
   var SFX_HINT = SFX_BASE + "hint.mp3";
   var SFX_CORRECT = SFX_BASE + "correct_answer.mp3";
   var SFX_WRONG = SFX_BASE + "wrong_answer.mp3";
+  var resultCelebrationState = Object.create(null);
   var EXTERNAL_QUESTION_BANK = window.CLWTestQuestionBank || null;
   var LEARN_SECTION_MAP = {
     basics: {
@@ -1141,7 +1142,11 @@
       if (page !== "quiz") pauseActiveQuizTimer();
       if (page === "map") return renderMapPage();
       if (page === "quiz") return renderQuizPage();
-      if (page === "results") return renderResultsPage();
+      if (page === "results") {
+        var renderedResult = renderResultsPage();
+        runResultCelebrationOnce(renderedResult);
+        return;
+      }
       return renderMistakesPage();
     } catch (error) {
       var errText = error && error.message ? error.message : String(error || tx("Unknown error"));
@@ -1826,7 +1831,7 @@
         '<section class="test-hero"><div class="test-kicker">' + tx("Results unavailable") + '</div><h1 class="test-title">' + tx("No completed quiz result is available yet.") + '</h1><div class="test-quick-actions">' +
         renderLinkButton(tx("Back to map"), "test.html", "test-link-btn--primary") +
         "</div></section>";
-      return;
+      return null;
     }
     var nextLevel = getNextLevel(result.level);
     var unitIndex = getUnitIndexInLevel(result.level, result.unit);
@@ -1912,12 +1917,17 @@
         '</svg>' +
       '</div>';
     }).join("");
-    var badgeHtml = result.badgeAwarded
+    var celebrationState = resultCelebrationState[result.id] || "";
+    var celebrationDone = celebrationState === "done";
+    var celebrationRunning = celebrationState === "running";
+    var badgeHtml = result.badgeAwarded && celebrationDone
+      ? buildResultBadgeMarkup(result.badgeAwarded)
+      : result.badgeAwarded
       ? '<div class="result-badge-wrap result-badge-wrap--slot" id="result-badge-slot" aria-hidden="true"></div>'
       : '';
 
     rootEl.innerHTML =
-      '<div class="results-page">' +
+      '<div class="results-page' + (celebrationDone ? ' is-celebrated' : celebrationRunning ? ' is-celebrating' : '') + '">' +
         '<div class="results-topbar">' +
           '<a class="results-back-btn" href="' + backUrl + '" aria-label="' + escapeAttr(tx("Back to map")) + '">' + IC.prev + '</a>' +
           '<div class="results-topbar__heading">' +
@@ -1973,31 +1983,61 @@
         '</div>' +
       '</div>';
 
-    /* ── SFX + confetti: times match CSS starPop / starFill delays (0.28s step, 0.42s pop, peak ~60%) ── */
-    var starStepMs = 280;
-    var starPopMs = 420;
-    var starPeakMs = Math.round(starPopMs * 0.6);
-    var si;
-    for (si = 1; si <= result.starsEarned; si++) {
-      (function (n) {
-        setTimeout(function () { playSfx(SFX_STAR); }, n * starStepMs + starPeakMs);
-      })(si);
-    }
-    if (result.starsEarned === 3) {
+    return result;
+  }
+
+  function runResultCelebrationOnce(result) {
+    if (!result || !result.id || resultCelebrationState[result.id]) return;
+    resultCelebrationState[result.id] = "running";
+
+    requestAnimationFrame(function () {
+      var pageEl = rootEl.querySelector(".results-page");
+      if (pageEl) {
+        pageEl.offsetHeight;
+        pageEl.classList.add("is-celebrating");
+      }
+
+      /* Timings match CSS starPop / starFill delays (0.28s step, 0.42s pop, peak ~60%). */
+      var starStepMs = 280;
+      var starPopMs = 420;
+      var starPeakMs = Math.round(starPopMs * 0.6);
+      var si;
+      for (si = 1; si <= result.starsEarned; si++) {
+        scheduleSfx(SFX_STAR, si * starStepMs + starPeakMs);
+      }
+      if (result.starsEarned === 3) {
+        var badgeDelayMs = 3 * starStepMs + 180;
+        var badgePeakMs = Math.round(500 * 0.52);
+        var confettiAtMs = badgeDelayMs + badgePeakMs;
+        scheduleSfx(result.badgeAwarded ? SFX_TADA : SFX_CONFETTI, confettiAtMs);
+        setTimeout(function () {
+          launchConfetti();
+          if (result.badgeAwarded) {
+            var slot = document.getElementById("result-badge-slot");
+            if (slot) slot.outerHTML = buildResultBadgeMarkup(result.badgeAwarded);
+          }
+        }, confettiAtMs);
+      }
+      setTimeout(function () {
+        resultCelebrationState[result.id] = "done";
+        var currentPageEl = rootEl.querySelector(".results-page");
+        if (currentPageEl) {
+          currentPageEl.classList.remove("is-celebrating");
+          currentPageEl.classList.add("is-celebrated");
+        }
+      }, getResultCelebrationDurationMs(result, starStepMs, starPopMs));
+    });
+  }
+
+  function getResultCelebrationDurationMs(result, starStepMs, starPopMs) {
+    var starCount = Math.max(0, Number(result && result.starsEarned) || 0);
+    var starEndMs = starCount ? starCount * starStepMs + starPopMs : 0;
+    if (result && result.starsEarned === 3) {
       var badgeDelayMs = 3 * starStepMs + 180;
       var badgePeakMs = Math.round(500 * 0.52);
-      var confettiAtMs = badgeDelayMs + badgePeakMs;
-      setTimeout(function () {
-        launchConfetti();
-        if (result.badgeAwarded) {
-          var slot = document.getElementById("result-badge-slot");
-          if (slot) slot.outerHTML = buildResultBadgeMarkup(result.badgeAwarded);
-          playSfx(SFX_TADA);
-        } else {
-          playSfx(SFX_CONFETTI);
-        }
-      }, confettiAtMs);
+      return Math.max(starEndMs, badgeDelayMs + badgePeakMs + 550);
     }
+    return starEndMs;
   }
 
   function renderMistakesPage() {
@@ -3129,6 +3169,12 @@
   function playSfx(src, opts) {
     if (window.CLWSound && typeof CLWSound.play === "function") {
       CLWSound.play(src, opts);
+    }
+  }
+
+  function scheduleSfx(src, delayMs, opts) {
+    if (window.CLWSound && typeof CLWSound.schedule === "function") {
+      CLWSound.schedule(src, delayMs, opts);
     }
   }
 
