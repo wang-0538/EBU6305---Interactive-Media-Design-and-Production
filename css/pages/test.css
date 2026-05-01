@@ -3289,12 +3289,6 @@ a.results-mini-ov__block:focus-visible {
 }
 
 @media (max-width: 42rem) {
-  .result-stats-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 42rem) {
   main.page-test {
     width: min(var(--content-max), calc(100% - 1rem));
     padding: 0.85rem;
@@ -4371,6 +4365,12 @@ a.results-mini-ov__block:focus-visible {
 .reward-badges .reward-badge-tag:focus-visible {
   outline: 2px solid currentColor;
   outline-offset: 2px;
+}
+
+@media (max-width: 48rem) {
+  .page-test-results .result-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .badge-reveal-tag {
