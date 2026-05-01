@@ -5,6 +5,9 @@
 (function () {
   "use strict";
 
+  var FONT_SIZE_STORAGE_KEY = "clw_font_size_by_user_v1";
+  var FONT_SIZE_ATTR = "data-clw-font-size";
+
   /** @type {{ soundEffects: boolean, language: 'zh'|'en', colourMode: 'default'|'accessible', fontSize: 's'|'m'|'l' }} */
   var prefState = {
     soundEffects: true,
@@ -52,6 +55,65 @@
 
   var ICON_AA =
     '<span class="settings-icon-text" aria-hidden="true">Aa</span>';
+
+  function getUserKey() {
+    if (window.CLWAuth && typeof CLWAuth.isLoggedIn === "function" && CLWAuth.isLoggedIn()) {
+      var u = CLWAuth.getCurrentUsername && CLWAuth.getCurrentUsername();
+      if (u && u !== "Guest") return String(u);
+    }
+    return "__guest__";
+  }
+
+  function readFontSizePrefs() {
+    try {
+      var raw = localStorage.getItem(FONT_SIZE_STORAGE_KEY);
+      if (!raw) return {};
+      var parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function writeFontSizeForCurrentUser(fontSize) {
+    var all = readFontSizePrefs();
+    all[getUserKey()] = normalizeFontSize(fontSize);
+    try {
+      localStorage.setItem(FONT_SIZE_STORAGE_KEY, JSON.stringify(all));
+    } catch (e) {}
+  }
+
+  function normalizeFontSize(fontSize) {
+    return fontSize === "s" || fontSize === "l" ? fontSize : "m";
+  }
+
+  function emitFontSizeChanged(fontSize) {
+    document.dispatchEvent(
+      new CustomEvent("clw:font-size-changed", {
+        detail: { fontSize: fontSize, userKey: getUserKey() }
+      })
+    );
+  }
+
+  function applyFontSize(fontSize, options) {
+    var next = normalizeFontSize(fontSize);
+    prefState.fontSize = next;
+    document.documentElement.setAttribute(FONT_SIZE_ATTR, next);
+    if (!options || options.persist !== false) {
+      writeFontSizeForCurrentUser(next);
+    }
+    if (options && options.emit) {
+      emitFontSizeChanged(next);
+    }
+  }
+
+  function syncFontSizeFromStorage() {
+    var all = readFontSizePrefs();
+    var next = Object.prototype.hasOwnProperty.call(all, getUserKey())
+      ? all[getUserKey()]
+      : defaults.fontSize;
+    applyFontSize(next, { persist: false });
+  }
 
   function tr(key) {
     if (window.CLWLocale && typeof CLWLocale.translate === "function") {
@@ -256,6 +318,7 @@
     if (window.CLWLocale && typeof CLWLocale.setLocale === "function") {
       CLWLocale.setLocale(defaults.language);
     }
+    applyFontSize(defaults.fontSize, { emit: true });
     applyPrefStateToDom();
   }
 
@@ -370,7 +433,7 @@
         } else if (key === "colour-mode" && (val === "default" || val === "accessible")) {
           prefState.colourMode = val;
         } else if (key === "font-size" && (val === "s" || val === "m" || val === "l")) {
-          prefState.fontSize = val;
+          applyFontSize(val, { emit: true });
         }
         applyPrefStateToDom();
       }
@@ -423,14 +486,18 @@
     refreshProfileCard();
     syncSoundFromCLW();
     syncLocaleFromCLW();
+    syncFontSizeFromStorage();
     applyPrefStateToDom();
   }
+
+  syncFontSizeFromStorage();
 
   document.addEventListener("site:components-ready", init);
   document.addEventListener("clw:auth-changed", function () {
     refreshProfileCard();
     syncSoundFromCLW();
     syncLocaleFromCLW();
+    syncFontSizeFromStorage();
     applyPrefStateToDom();
   });
   document.addEventListener("clw:locale-changed", function (ev) {
@@ -456,6 +523,10 @@
     /** Read-only snapshot for future persistence hooks */
     getPreferenceState: function () {
       return Object.assign({}, prefState);
+    },
+    setFontSize: function (fontSize) {
+      applyFontSize(fontSize, { emit: true });
+      applyPrefStateToDom();
     }
   };
 })();
