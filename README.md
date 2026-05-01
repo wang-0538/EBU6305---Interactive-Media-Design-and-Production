@@ -16,7 +16,7 @@ Each member mainly works on their own page with separate HTML, CSS, and JS files
 | Homepage | index.html | css/pages/homepage.css | js/pages/homepage.js |
 | Learning | learning.html | css/pages/learning.css | js/pages/learning.js |
 | Game | game.html | css/pages/game.css | js/pages/game.js |
-| Test | test.html | css/pages/test.css | js/pages/test.js |
+| Test | test.html | css/pages/test.css | js/pages/test/test.js |
 | Community | community.html | css/pages/community.css | js/pages/community.js |
 
 ---

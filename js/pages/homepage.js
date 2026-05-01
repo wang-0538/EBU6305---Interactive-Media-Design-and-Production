@@ -724,7 +724,7 @@
   }
 
   function loadTestQuestionCatalog() {
-    return fetch("js/pages/test.js")
+    return fetch("js/pages/test/test.js")
       .then(function (res) {
         if (!res.ok) throw new Error("Failed to load test module");
         return res.text();

@@ -1,13 +1,13 @@
 ﻿(function () {
   "use strict";
 
-  function tx(str) {
-    if (str == null) return "";
-    if (window.CLWLocale && typeof CLWLocale.translateTest === "function") {
-      return CLWLocale.translateTest(String(str));
-    }
-    return String(str);
+function tx(str) {
+  if (str == null) return "";
+  if (window.CLWLocale && typeof CLWLocale.translate === "function") {
+    return CLWLocale.translate(String(str), "test");
   }
+  return String(str);
+}
 
   /** Hint text rebuilt for display so reviewTopic can be translated. */
   function displayHintForQuestion(q) {
